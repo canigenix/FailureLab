@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "failurelab"
+version = "0.1.0"
+description = "Automated failure discovery, robustness testing, and regression gating for machine learning models."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Eren" }
+]
+keywords = [
+    "machine-learning",
+    "robustness",
+    "model-testing",
+    "computer-vision",
+    "mlops",
+    "stress-testing"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+
+dependencies = [
+    "numpy",
+    "pillow",
+    "torch",
+    "torchvision"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov"
+]
+
+[project.scripts]
+failurelab = "failurelab.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["failurelab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
