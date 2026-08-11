@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: failurelab
+Version: 0.1.0
+Summary: Automated failure discovery, robustness testing, and regression gating for machine learning models.
+Author: Eren
+Keywords: machine-learning,robustness,model-testing,computer-vision,mlops,stress-testing
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pillow
+Requires-Dist: torch
+Requires-Dist: torchvision
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"

@@ -1,6 +1,6 @@
 import json
 
-from failurelab.failurelab.export import (
+from failurelab.export import (
     export_vision_html,
     export_vision_json,
 )

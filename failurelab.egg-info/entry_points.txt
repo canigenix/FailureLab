@@ -1,0 +1,2 @@
+[console_scripts]
+failurelab = failurelab.cli:main
