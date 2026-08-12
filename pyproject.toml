@@ -9,7 +9,7 @@ version = "0.1.0"
 description = "Automated failure discovery, robustness testing, and regression gating for machine learning models."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "Apache-2.0"
 
 authors = [
     { name = "Eren" }

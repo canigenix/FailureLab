@@ -3,7 +3,7 @@ Name: failurelab
 Version: 0.1.0
 Summary: Automated failure discovery, robustness testing, and regression gating for machine learning models.
 Author: Eren
-License-Expression: MIT
+License-Expression: Apache-2.0
 Keywords: machine-learning,robustness,model-testing,computer-vision,mlops,stress-testing,model-evaluation,regression-testing
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Developers
@@ -950,4 +950,6 @@ The project has working package builds, automated tests, command-line tooling, m
 
 ## License
 
-Add the repository's chosen open-source license here before public release.
+FailureLab is licensed under the Apache License 2.0.
+
+See the `LICENSE` file for the full license terms.

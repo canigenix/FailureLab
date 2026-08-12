@@ -917,4 +917,6 @@ The project has working package builds, automated tests, command-line tooling, m
 
 ## License
 
-Add the repository's chosen open-source license here before public release.
+FailureLab is licensed under the Apache License 2.0.
+
+See the `LICENSE` file for the full license terms.
