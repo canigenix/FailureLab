@@ -1,36 +1,3 @@
-Metadata-Version: 2.4
-Name: failurelab
-Version: 0.1.0
-Summary: Automated failure discovery, robustness testing, and regression gating for machine learning models.
-Author: Eren
-License-Expression: MIT
-Keywords: machine-learning,robustness,model-testing,computer-vision,mlops,stress-testing,model-evaluation,regression-testing
-Classifier: Development Status :: 3 - Alpha
-Classifier: Intended Audience :: Developers
-Classifier: Intended Audience :: Science/Research
-Classifier: Operating System :: OS Independent
-Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
-Classifier: Programming Language :: Python :: 3.12
-Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
-Classifier: Topic :: Software Development :: Testing
-Requires-Python: >=3.10
-Description-Content-Type: text/markdown
-License-File: LICENSE
-Requires-Dist: numpy>=1.24
-Requires-Dist: pillow>=9.0
-Provides-Extra: vision
-Requires-Dist: torch; extra == "vision"
-Requires-Dist: torchvision; extra == "vision"
-Provides-Extra: dev
-Requires-Dist: pytest; extra == "dev"
-Requires-Dist: pytest-cov; extra == "dev"
-Requires-Dist: build; extra == "dev"
-Provides-Extra: all
-Requires-Dist: failurelab[dev,vision]; extra == "all"
-Dynamic: license-file
-
 # FailureLab
 
 **Stress-test computer vision models, discover where they fail, and prevent robustness regressions before deployment.**

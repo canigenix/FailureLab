@@ -143,3 +143,142 @@ def test_cli_compare_returns_two_for_missing_file(
     exit_code = main()
 
     assert exit_code == 2
+
+
+def test_cli_compare_custom_tolerance(
+    tmp_path,
+    monkeypatch,
+):
+    baseline = (
+        tmp_path
+        / "baseline.json"
+    )
+
+    candidate = (
+        tmp_path
+        / "candidate.json"
+    )
+
+    write_snapshot(
+        baseline,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.20,
+    )
+
+    write_snapshot(
+        candidate,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.25,
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--candidate",
+            str(candidate),
+            "--tolerance",
+            "0.10",
+        ],
+    )
+
+    exit_code = main()
+
+    assert exit_code == 0
+
+
+def test_cli_compare_default_tolerance_detects_drop(
+    tmp_path,
+    monkeypatch,
+):
+    baseline = (
+        tmp_path
+        / "baseline.json"
+    )
+
+    candidate = (
+        tmp_path
+        / "candidate.json"
+    )
+
+    write_snapshot(
+        baseline,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.20,
+    )
+
+    write_snapshot(
+        candidate,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.25,
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--candidate",
+            str(candidate),
+        ],
+    )
+
+    exit_code = main()
+
+    assert exit_code == 1
+
+
+def test_cli_compare_rejects_negative_tolerance(
+    tmp_path,
+    monkeypatch,
+):
+    baseline = (
+        tmp_path
+        / "baseline.json"
+    )
+
+    candidate = (
+        tmp_path
+        / "candidate.json"
+    )
+
+    write_snapshot(
+        baseline,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.20,
+    )
+
+    write_snapshot(
+        candidate,
+        score=75.0,
+        threshold=None,
+        worst_drop=0.20,
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--candidate",
+            str(candidate),
+            "--tolerance",
+            "-0.01",
+        ],
+    )
+
+    exit_code = main()
+
+    assert exit_code == 2

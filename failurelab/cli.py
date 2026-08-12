@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+from failurelab import __version__
+
 from .comparison import (
     BoundaryComparison,
     ModelComparison,
@@ -20,6 +22,12 @@ def build_parser():
             "Stress-test machine-learning models "
             "and enforce robustness policies."
         ),
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     subparsers = parser.add_subparsers(
@@ -47,14 +55,24 @@ def build_parser():
         "--baseline",
         type=Path,
         required=True,
-        help="Baseline comparison JSON file.",
+        help="Baseline robustness snapshot JSON file.",
     )
 
     compare_parser.add_argument(
         "--candidate",
         type=Path,
         required=True,
-        help="Candidate comparison JSON file.",
+        help="Candidate robustness snapshot JSON file.",
+    )
+
+    compare_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.02,
+        help=(
+            "Maximum allowed increase in worst-case degradation "
+            "before a regression is reported. Default: 0.02."
+        ),
     )
 
     return parser
@@ -79,9 +97,8 @@ def _load_model_snapshot(
         "boundaries",
     }
 
-    missing = (
-        required
-        - set(data.keys())
+    missing = required - set(
+        data.keys()
     )
 
     if missing:
@@ -94,6 +111,15 @@ def _load_model_snapshot(
             f"required field(s): {missing_text}"
         )
 
+    if not isinstance(
+        data["boundaries"],
+        list,
+    ):
+        raise ValueError(
+            f"Comparison file {path} has invalid "
+            "'boundaries' data."
+        )
+
     return data
 
 
@@ -102,6 +128,11 @@ def _build_comparison_from_snapshots(
     candidate_data: dict,
     regression_tolerance: float = 0.02,
 ) -> ModelComparison:
+    if regression_tolerance < 0:
+        raise ValueError(
+            "regression tolerance cannot be negative."
+        )
+
     baseline_boundaries = {
         boundary["stress_name"]: boundary
         for boundary in baseline_data["boundaries"]
@@ -167,29 +198,37 @@ def _build_comparison_from_snapshots(
         elif stress_name in higher_is_better:
             if candidate_threshold > baseline_threshold:
                 threshold_status = "improved"
+
             elif candidate_threshold < baseline_threshold:
                 threshold_status = "regressed"
+
             else:
                 threshold_status = "unchanged"
 
         elif stress_name in lower_is_better:
             if candidate_threshold < baseline_threshold:
                 threshold_status = "improved"
+
             elif candidate_threshold > baseline_threshold:
                 threshold_status = "regressed"
+
             else:
                 threshold_status = "unchanged"
 
         else:
             threshold_status = "unchanged"
 
-        baseline_worst_drop = baseline[
-            "worst_top1_drop"
-        ]
+        baseline_worst_drop = float(
+            baseline[
+                "worst_top1_drop"
+            ]
+        )
 
-        candidate_worst_drop = candidate[
-            "worst_top1_drop"
-        ]
+        candidate_worst_drop = float(
+            candidate[
+                "worst_top1_drop"
+            ]
+        )
 
         worst_drop_delta = (
             candidate_worst_drop
@@ -275,6 +314,7 @@ def run_check(
 def run_compare(
     baseline_path: Path,
     candidate_path: Path,
+    regression_tolerance: float = 0.02,
 ) -> int:
     baseline_data = _load_model_snapshot(
         baseline_path
@@ -288,6 +328,7 @@ def run_compare(
         _build_comparison_from_snapshots(
             baseline_data,
             candidate_data,
+            regression_tolerance=regression_tolerance,
         )
     )
 
@@ -303,6 +344,7 @@ def run_compare(
         print(
             "RESULT: FAILED"
         )
+
         print(
             str(exc)
         )
@@ -330,12 +372,15 @@ def main():
             return run_compare(
                 baseline_path=args.baseline,
                 candidate_path=args.candidate,
+                regression_tolerance=args.tolerance,
             )
 
     except (
         FileNotFoundError,
         ValueError,
         json.JSONDecodeError,
+        KeyError,
+        TypeError,
     ) as exc:
         print(
             f"FailureLab error: {exc}",

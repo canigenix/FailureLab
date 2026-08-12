@@ -1,8 +1,14 @@
-numpy
-pillow
-torch
-torchvision
+numpy>=1.24
+pillow>=9.0
+
+[all]
+failurelab[dev,vision]
 
 [dev]
 pytest
 pytest-cov
+build
+
+[vision]
+torch
+torchvision
