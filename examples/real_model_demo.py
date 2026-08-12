@@ -185,6 +185,7 @@ html_path = report.save_html(
 
 
 print()
+print(report.summary())
 print("Reports saved")
 print("=============")
 

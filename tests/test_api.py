@@ -47,11 +47,60 @@ def test_failurelab_public_api_runs():
         FailureLabReport,
     )
 
-    assert len(
-        report.raw_results
-    ) == 1
-
+    assert len(report.raw_results) == 1
     assert report.weaknesses[0].name == "brightness"
+
+    assert report.robustness_score.score >= 0.0
+    assert report.robustness_score.score <= 100.0
+    assert report.robustness_score.grade
+    assert report.robustness_score.status
+
+
+def test_failurelab_report_contains_recommendations():
+    def predict_proba_fn(image):
+        pixel = image.getpixel((0, 0))[0]
+
+        if pixel >= 100:
+            return np.array(
+                [0.05, 0.95]
+            )
+
+        return np.array(
+            [0.95, 0.05]
+        )
+
+    dataset = [
+        (
+            Image.new(
+                "RGB",
+                (10, 10),
+                color=(200, 200, 200),
+            ),
+            1,
+        ),
+    ]
+
+    lab = FailureLab(
+        predict_proba_fn=predict_proba_fn,
+        dataset=dataset,
+    )
+
+    report = lab.run(
+        stress_tests=[
+            BrightnessTest(
+                factor=0.40
+            )
+        ]
+    )
+
+    assert len(report.recommendations) == 1
+
+    recommendation = report.recommendations[0]
+
+    assert recommendation.weakness_name == "brightness"
+    assert recommendation.diagnosis
+    assert recommendation.likely_cause
+    assert recommendation.suggested_action
 
 
 def test_failurelab_report_exports(tmp_path):
