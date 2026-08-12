@@ -12,6 +12,10 @@ from failurelab.export import (
     export_vision_html,
     export_vision_json,
 )
+from failurelab.failure_envelope import (
+    FailureEnvelope,
+    build_failure_envelope,
+)
 from failurelab.occlusion import OcclusionTest
 from failurelab.recommendations import (
     Recommendation,
@@ -23,6 +27,10 @@ from failurelab.score import (
     calculate_robustness_score,
 )
 from failurelab.stress_tests import BrightnessTest
+from failurelab.sweeps import (
+    StressSweepResult,
+    run_stress_sweep,
+)
 from failurelab.vision_report import (
     VisionDiagnosticReport,
     VisionWeakness,
@@ -42,6 +50,7 @@ class FailureLabReport:
     raw_results: list[VisionStressResult]
     robustness_score: RobustnessScore
     recommendations: list[Recommendation]
+    failure_envelope: FailureEnvelope | None = None
 
     def summary(self) -> str:
         """Return a compact one-line robustness verdict."""
@@ -63,6 +72,15 @@ class FailureLabReport:
             f"({self.robustness_score.grade}) — "
             f"{self.robustness_score.status}."
         )
+
+    def with_failure_envelope(
+        self,
+        envelope: FailureEnvelope,
+    ):
+        """Attach sweep-derived failure boundaries to this report."""
+
+        self.failure_envelope = envelope
+        return self
 
     def to_text(self) -> str:
         """Return the human-readable diagnostic report."""
@@ -106,9 +124,18 @@ class FailureLabReport:
                             f"{recommendation.weakness_name.title()} "
                             f"[{recommendation.severity.upper()}]"
                         ),
-                        f"   Diagnosis: {recommendation.diagnosis}",
-                        f"   Likely cause: {recommendation.likely_cause}",
-                        f"   Next action: {recommendation.suggested_action}",
+                        (
+                            f"   Diagnosis: "
+                            f"{recommendation.diagnosis}"
+                        ),
+                        (
+                            f"   Likely cause: "
+                            f"{recommendation.likely_cause}"
+                        ),
+                        (
+                            f"   Next action: "
+                            f"{recommendation.suggested_action}"
+                        ),
                         "",
                     ]
                 )
@@ -117,7 +144,42 @@ class FailureLabReport:
                 "\n".join(lines).rstrip()
             )
 
-        return "\n\n".join(sections)
+        if self.failure_envelope is not None:
+            lines = [
+                "Failure Envelope",
+                "================",
+                "",
+            ]
+
+            for boundary in self.failure_envelope.boundaries:
+                lines.append(
+                    boundary.stress_name.title()
+                )
+
+                lines.append(
+                    f"   Worst top-1 drop: "
+                    f"{boundary.worst_top1_drop:.1%}"
+                )
+
+                if boundary.failure_threshold is None:
+                    lines.append(
+                        "   Failure threshold: not reached"
+                    )
+                else:
+                    lines.append(
+                        f"   Failure threshold: "
+                        f"{boundary.failure_threshold}"
+                    )
+
+                lines.append("")
+
+            sections.append(
+                "\n".join(lines).rstrip()
+            )
+
+        return "\n\n".join(
+            sections
+        )
 
     def save_json(
         self,
@@ -130,6 +192,7 @@ class FailureLabReport:
             path=path,
             robustness_score=self.robustness_score,
             recommendations=self.recommendations,
+            failure_envelope=self.failure_envelope,
         )
 
     def save_html(
@@ -143,6 +206,7 @@ class FailureLabReport:
             path=path,
             robustness_score=self.robustness_score,
             recommendations=self.recommendations,
+            failure_envelope=self.failure_envelope,
         )
 
 
@@ -161,12 +225,24 @@ class FailureLab:
         """Return FailureLab's default vision robustness suite."""
 
         return [
-            BrightnessTest(factor=0.45),
-            BlurTest(radius=3.0),
-            CompressionTest(quality=20),
-            OcclusionTest(fraction=0.40),
-            RotationTest(degrees=30),
-            CenterCropTest(fraction=0.60),
+            BrightnessTest(
+                factor=0.45
+            ),
+            BlurTest(
+                radius=3.0
+            ),
+            CompressionTest(
+                quality=20
+            ),
+            OcclusionTest(
+                fraction=0.40
+            ),
+            RotationTest(
+                degrees=30
+            ),
+            CenterCropTest(
+                fraction=0.60
+            ),
         ]
 
     def run(
@@ -209,4 +285,138 @@ class FailureLab:
             raw_results=results,
             robustness_score=robustness_score,
             recommendations=recommendations,
+        )
+
+    def sweep(
+        self,
+        stress_name: str,
+    ) -> StressSweepResult:
+        """Run one built-in severity sweep."""
+
+        presets = {
+            "brightness": {
+                "values": [
+                    0.90,
+                    0.75,
+                    0.60,
+                    0.45,
+                    0.30,
+                ],
+                "factory": lambda value: BrightnessTest(
+                    factor=value
+                ),
+            },
+            "blur": {
+                "values": [
+                    0.5,
+                    1.0,
+                    2.0,
+                    3.0,
+                    5.0,
+                ],
+                "factory": lambda value: BlurTest(
+                    radius=value
+                ),
+            },
+            "compression": {
+                "values": [
+                    90,
+                    70,
+                    50,
+                    30,
+                    10,
+                ],
+                "factory": lambda value: CompressionTest(
+                    quality=int(value)
+                ),
+            },
+            "occlusion": {
+                "values": [
+                    0.10,
+                    0.20,
+                    0.30,
+                    0.40,
+                    0.50,
+                ],
+                "factory": lambda value: OcclusionTest(
+                    fraction=value
+                ),
+            },
+            "rotation": {
+                "values": [
+                    5,
+                    10,
+                    20,
+                    30,
+                    45,
+                ],
+                "factory": lambda value: RotationTest(
+                    degrees=value
+                ),
+            },
+            "crop": {
+                "values": [
+                    0.90,
+                    0.80,
+                    0.70,
+                    0.60,
+                    0.50,
+                ],
+                "factory": lambda value: CenterCropTest(
+                    fraction=value
+                ),
+            },
+        }
+
+        normalized_name = (
+            stress_name
+            .strip()
+            .lower()
+        )
+
+        if normalized_name not in presets:
+            supported = ", ".join(
+                presets.keys()
+            )
+
+            raise ValueError(
+                f"Unknown stress sweep: {stress_name}. "
+                f"Supported sweeps: {supported}."
+            )
+
+        preset = presets[
+            normalized_name
+        ]
+
+        return run_stress_sweep(
+            name=normalized_name,
+            severity_values=preset["values"],
+            stress_factory=preset["factory"],
+            predict_proba_fn=self.predict_proba_fn,
+            dataset=self.dataset,
+        )
+
+    def sweep_all(
+        self,
+    ) -> FailureEnvelope:
+        """Run all built-in sweeps and return the model failure envelope."""
+
+        sweep_names = [
+            "brightness",
+            "blur",
+            "compression",
+            "occlusion",
+            "rotation",
+            "crop",
+        ]
+
+        sweeps = [
+            self.sweep(
+                sweep_name
+            )
+            for sweep_name in sweep_names
+        ]
+
+        return build_failure_envelope(
+            sweeps
         )

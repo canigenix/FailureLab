@@ -1,17 +1,28 @@
-"""Evaluate FailureLab through its public API on a real image dataset."""
+"""Evaluate FailureLab on a balanced real-image dataset."""
 
 from collections import Counter
 from pathlib import Path
 
 import torch
 from torchvision.datasets import OxfordIIITPet
-from torchvision.models import ResNet18_Weights, resnet18
+from torchvision.models import (
+    ResNet18_Weights,
+    resnet18,
+)
 
 from failurelab import FailureLab
 
 
+# ---------------------------------------------------------
+# Model
+# ---------------------------------------------------------
+
 weights = ResNet18_Weights.DEFAULT
-model = resnet18(weights=weights)
+
+model = resnet18(
+    weights=weights
+)
+
 model.eval()
 
 preprocess = weights.transforms()
@@ -21,6 +32,41 @@ category_to_index = {
     name.lower(): index
     for index, name in enumerate(categories)
 }
+
+
+def predict_proba_fn(image):
+    """Return the complete ImageNet probability vector for one image."""
+
+    tensor = preprocess(
+        image
+    ).unsqueeze(0)
+
+    with torch.no_grad():
+        logits = model(
+            tensor
+        )
+
+        probabilities = torch.softmax(
+            logits,
+            dim=1,
+        )[0]
+
+    return probabilities.cpu().numpy()
+
+
+# ---------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------
+
+DATA_ROOT = (
+    Path(__file__).resolve().parent
+    / "downloaded_data"
+)
+
+REPORT_DIR = (
+    Path(__file__).resolve().parent
+    / "reports"
+)
 
 
 BREED_MAPPING = {
@@ -54,33 +100,10 @@ BREED_MAPPING = {
 }
 
 
-DATA_ROOT = (
-    Path(__file__).resolve().parent
-    / "downloaded_data"
-)
-
-REPORT_DIR = (
-    Path(__file__).resolve().parent
-    / "reports"
-)
-
-
-def predict_proba_fn(image):
-    """Return the complete ImageNet probability vector for one image."""
-
-    tensor = preprocess(image).unsqueeze(0)
-
-    with torch.no_grad():
-        logits = model(tensor)
-        probabilities = torch.softmax(logits, dim=1)[0]
-
-    return probabilities.cpu().numpy()
-
-
 def load_real_dataset(
     samples_per_class: int = 20,
 ):
-    """Build a balanced Oxford-IIIT Pet subset for ImageNet evaluation."""
+    """Build a balanced Oxford-IIIT Pet subset."""
 
     source_dataset = OxfordIIITPet(
         root=DATA_ROOT,
@@ -92,7 +115,9 @@ def load_real_dataset(
     buckets = {}
 
     for image, target in source_dataset:
-        pet_class = source_dataset.classes[target]
+        pet_class = source_dataset.classes[
+            target
+        ]
 
         imagenet_name = BREED_MAPPING.get(
             pet_class
@@ -128,7 +153,9 @@ def load_real_dataset(
     dataset = []
 
     for samples in buckets.values():
-        dataset.extend(samples)
+        dataset.extend(
+            samples
+        )
 
     if not dataset:
         raise RuntimeError(
@@ -137,6 +164,10 @@ def load_real_dataset(
 
     return dataset
 
+
+# ---------------------------------------------------------
+# Load dataset
+# ---------------------------------------------------------
 
 dataset = load_real_dataset(
     samples_per_class=20
@@ -153,9 +184,11 @@ print(
 )
 
 print()
-print("Running FailureLab through the public API...")
-print()
 
+
+# ---------------------------------------------------------
+# Run FailureLab core evaluation
+# ---------------------------------------------------------
 
 lab = FailureLab(
     predict_proba_fn=predict_proba_fn,
@@ -164,11 +197,71 @@ lab = FailureLab(
 
 report = lab.run()
 
-
 print(
     report.to_text()
 )
 
+print()
+print(
+    report.summary()
+)
+
+
+# ---------------------------------------------------------
+# Build complete failure envelope
+# ---------------------------------------------------------
+
+print()
+print()
+print("Running FailureLab severity sweeps...")
+print()
+
+envelope = lab.sweep_all()
+
+report.with_failure_envelope(
+    envelope
+)
+
+
+# ---------------------------------------------------------
+# Print failure envelope
+# ---------------------------------------------------------
+
+print(
+    "Failure Envelope"
+)
+
+print(
+    "================"
+)
+
+for boundary in envelope.boundaries:
+    print()
+    print(
+        boundary.stress_name.title()
+    )
+
+    print(
+        f"  Worst top-1 drop: "
+        f"{boundary.worst_top1_drop:.1%}"
+    )
+
+    if boundary.failure_threshold is None:
+        print(
+            "  Failure threshold: "
+            "not reached"
+        )
+
+    else:
+        print(
+            f"  Failure threshold: "
+            f"{boundary.failure_threshold}"
+        )
+
+
+# ---------------------------------------------------------
+# Export complete reports
+# ---------------------------------------------------------
 
 REPORT_DIR.mkdir(
     parents=True,
@@ -176,16 +269,18 @@ REPORT_DIR.mkdir(
 )
 
 json_path = report.save_json(
-    REPORT_DIR / "failurelab_report.json"
+    REPORT_DIR
+    / "failurelab_report.json"
 )
 
 html_path = report.save_html(
-    REPORT_DIR / "failurelab_report.html"
+    REPORT_DIR
+    / "failurelab_report.html"
 )
 
 
 print()
-print(report.summary())
+print()
 print("Reports saved")
 print("=============")
 

@@ -6,6 +6,7 @@ import html
 import json
 from pathlib import Path
 
+from failurelab.failure_envelope import FailureEnvelope
 from failurelab.recommendations import Recommendation
 from failurelab.score import RobustnessScore
 from failurelab.vision_report import VisionWeakness
@@ -16,6 +17,7 @@ def export_vision_json(
     path,
     robustness_score: RobustnessScore | None = None,
     recommendations: list[Recommendation] | None = None,
+    failure_envelope: FailureEnvelope | None = None,
 ) -> Path:
     """Export ranked vision weaknesses as JSON."""
 
@@ -60,6 +62,22 @@ def export_vision_json(
                 recommendations or []
             )
         ],
+        "failure_envelope": (
+            None
+            if failure_envelope is None
+            else [
+                {
+                    "stress_name": boundary.stress_name,
+                    "failure_threshold": (
+                        boundary.failure_threshold
+                    ),
+                    "worst_top1_drop": (
+                        boundary.worst_top1_drop
+                    ),
+                }
+                for boundary in failure_envelope.boundaries
+            ]
+        ),
     }
 
     path.write_text(
@@ -78,6 +96,7 @@ def export_vision_html(
     path,
     robustness_score: RobustnessScore | None = None,
     recommendations: list[Recommendation] | None = None,
+    failure_envelope: FailureEnvelope | None = None,
 ) -> Path:
     """Export ranked vision weaknesses as standalone HTML."""
 
@@ -110,7 +129,9 @@ def export_vision_html(
             """
         )
 
-    table_rows = "\n".join(rows)
+    table_rows = "\n".join(
+        rows
+    )
 
     if robustness_score is None:
         score_section = ""
@@ -121,7 +142,7 @@ def export_vision_html(
                 {robustness_score.score:.1f}
             </div>
 
-            <div class="score-details">
+            <div>
                 <div class="score-label">
                     Robustness Score
                 </div>
@@ -130,15 +151,15 @@ def export_vision_html(
                     Grade {html.escape(robustness_score.grade)}
                 </div>
 
-                <div class="status">
+                <div class="muted">
                     {html.escape(robustness_score.status)}
                 </div>
 
-                <div class="score-metrics">
+                <div class="muted">
                     Average degradation:
                     {robustness_score.average_degradation:.1%}
-                    &nbsp; | &nbsp;
-                    Worst degradation:
+                    ·
+                    Worst:
                     {robustness_score.worst_degradation:.1%}
                 </div>
             </div>
@@ -156,9 +177,9 @@ def export_vision_html(
 
         recommendation_cards.append(
             f"""
-            <article class="recommendation-card">
+            <article class="card">
 
-                <div class="recommendation-header">
+                <div class="card-header">
                     <h3>
                         {html.escape(
                             recommendation.weakness_name.title()
@@ -191,22 +212,70 @@ def export_vision_html(
             """
         )
 
+    recommendations_section = ""
+
     if recommendation_cards:
         recommendations_section = f"""
-        <section class="recommendations">
-
+        <section>
             <h2>Priority Recommendations</h2>
+            {"".join(recommendation_cards)}
+        </section>
+        """
 
-            <p class="section-description">
-                Suggested actions for the most meaningful robustness weaknesses.
+    envelope_rows = []
+
+    if failure_envelope is not None:
+        for boundary in failure_envelope.boundaries:
+            if boundary.failure_threshold is None:
+                threshold = "Not reached"
+            else:
+                threshold = str(
+                    boundary.failure_threshold
+                )
+
+            envelope_rows.append(
+                f"""
+                <tr>
+                    <td>
+                        {html.escape(boundary.stress_name.title())}
+                    </td>
+                    <td>
+                        {html.escape(threshold)}
+                    </td>
+                    <td>
+                        {boundary.worst_top1_drop:.1%}
+                    </td>
+                </tr>
+                """
+            )
+
+    if envelope_rows:
+        envelope_section = f"""
+        <section>
+            <h2>Failure Envelope</h2>
+
+            <p class="muted">
+                First tested severity where top-1 degradation reaches 25%.
             </p>
 
-            {"".join(recommendation_cards)}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stress Type</th>
+                        <th>Failure Threshold</th>
+                        <th>Worst Top-1 Drop</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {"".join(envelope_rows)}
+                </tbody>
+            </table>
 
         </section>
         """
     else:
-        recommendations_section = ""
+        envelope_section = ""
 
     document = f"""<!DOCTYPE html>
 <html lang="en">
@@ -232,9 +301,9 @@ def export_vision_html(
             max-width: 1100px;
             margin: 0 auto;
             padding: 48px 24px;
-            line-height: 1.5;
             background: #f7f8fa;
             color: #1f2328;
+            line-height: 1.5;
         }}
 
         .container {{
@@ -247,21 +316,14 @@ def export_vision_html(
         h1 {{
             margin-top: 0;
             margin-bottom: 6px;
-            font-size: 32px;
         }}
 
         h2 {{
-            margin-top: 36px;
-            margin-bottom: 4px;
+            margin-top: 38px;
         }}
 
-        .subtitle,
-        .section-description {{
+        .muted {{
             color: #667085;
-        }}
-
-        .subtitle {{
-            margin-bottom: 30px;
         }}
 
         .score-card {{
@@ -269,7 +331,7 @@ def export_vision_html(
             align-items: center;
             gap: 26px;
             padding: 26px;
-            margin-bottom: 34px;
+            margin: 30px 0;
             border: 1px solid #dfe3e8;
             border-radius: 14px;
             background: #fafafa;
@@ -277,12 +339,12 @@ def export_vision_html(
 
         .score-number {{
             font-size: 58px;
-            line-height: 1;
             font-weight: 700;
+            line-height: 1;
         }}
 
         .score-label {{
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #667085;
@@ -291,13 +353,6 @@ def export_vision_html(
         .grade {{
             font-size: 24px;
             font-weight: 650;
-            margin-top: 4px;
-        }}
-
-        .status,
-        .score-metrics {{
-            margin-top: 3px;
-            color: #667085;
         }}
 
         table {{
@@ -305,19 +360,18 @@ def export_vision_html(
             border-collapse: collapse;
         }}
 
-        th {{
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #667085;
-            background: #f8f9fb;
-        }}
-
         th,
         td {{
             padding: 14px 12px;
             border-bottom: 1px solid #e8eaed;
             text-align: left;
+        }}
+
+        th {{
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #667085;
+            background: #f8f9fb;
         }}
 
         .severity {{
@@ -348,7 +402,7 @@ def export_vision_html(
             color: #137333;
         }}
 
-        .recommendation-card {{
+        .card {{
             padding: 20px;
             margin-top: 16px;
             border: 1px solid #e1e4e8;
@@ -356,19 +410,14 @@ def export_vision_html(
             background: #fcfcfd;
         }}
 
-        .recommendation-header {{
+        .card-header {{
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            gap: 16px;
+            align-items: center;
         }}
 
-        .recommendation-header h3 {{
+        .card-header h3 {{
             margin: 0;
-        }}
-
-        .recommendation-card p {{
-            margin-bottom: 0;
         }}
     </style>
 </head>
@@ -379,11 +428,14 @@ def export_vision_html(
 
         <h1>FailureLab Vision Robustness Report</h1>
 
-        <div class="subtitle">
-            Ranked model weaknesses discovered through controlled stress testing.
-        </div>
+        <p class="muted">
+            Model failure discovery, severity analysis,
+            and robustness boundaries.
+        </p>
 
         {score_section}
+
+        <h2>Ranked Weaknesses</h2>
 
         <table>
             <thead>
@@ -401,6 +453,8 @@ def export_vision_html(
                 {table_rows}
             </tbody>
         </table>
+
+        {envelope_section}
 
         {recommendations_section}
 
