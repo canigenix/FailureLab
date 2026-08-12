@@ -1,4 +1,5 @@
 LICENSE
+NOTICE
 README.md
 pyproject.toml
 failurelab/__init__.py
