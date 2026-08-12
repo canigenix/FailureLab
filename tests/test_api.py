@@ -1,8 +1,11 @@
+import json
+
 import numpy as np
 from PIL import Image
 
 from failurelab import FailureLab, FailureLabReport
 from failurelab.stress_tests import BrightnessTest
+from tests.test_snapshot import make_report
 
 
 def test_failurelab_public_api_runs():
@@ -143,3 +146,23 @@ def test_failurelab_report_exports(tmp_path):
 
     assert json_path.exists()
     assert html_path.exists()
+
+
+def test_report_save_snapshot(tmp_path):
+    report = make_report()
+
+    path = report.save_snapshot(
+        tmp_path / "report_snapshot.json"
+    )
+
+    assert path.exists()
+
+    data = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert data["format"] == "failurelab_snapshot"
+    assert data["score"] == 75.0
+    assert len(data["boundaries"]) == 2

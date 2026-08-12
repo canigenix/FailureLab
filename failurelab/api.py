@@ -209,6 +209,19 @@ class FailureLabReport:
             failure_envelope=self.failure_envelope,
         )
 
+    def save_snapshot(
+        self,
+        path,
+    ) -> Path:
+        """Export this report as a reusable robustness snapshot."""
+
+        from failurelab.snapshot import export_snapshot
+
+        return export_snapshot(
+            self,
+            path,
+        )
+
 
 class FailureLab:
     """High-level interface for vision-model robustness testing."""

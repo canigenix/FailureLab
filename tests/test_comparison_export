@@ -1,0 +1,84 @@
+import json
+
+from failurelab.comparison import (
+    BoundaryComparison,
+    ModelComparison,
+)
+
+
+def make_comparison():
+    return ModelComparison(
+        baseline_score=75.0,
+        candidate_score=74.1,
+        score_delta=-0.9,
+        boundaries=[
+            BoundaryComparison(
+                stress_name="blur",
+                baseline_threshold=3.0,
+                candidate_threshold=3.0,
+                baseline_worst_drop=0.538,
+                candidate_worst_drop=0.542,
+                worst_drop_delta=0.004,
+                threshold_status="unchanged",
+                regression=False,
+                regression_reason="none",
+            ),
+            BoundaryComparison(
+                stress_name="occlusion",
+                baseline_threshold=0.40,
+                candidate_threshold=0.30,
+                baseline_worst_drop=0.58,
+                candidate_worst_drop=0.50,
+                worst_drop_delta=-0.08,
+                threshold_status="regressed",
+                regression=True,
+                regression_reason="threshold",
+            ),
+        ],
+    )
+
+
+def test_comparison_json_export(tmp_path):
+    comparison = make_comparison()
+
+    path = comparison.save_json(
+        tmp_path / "comparison.json"
+    )
+
+    data = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert data["baseline_score"] == 75.0
+    assert data["candidate_score"] == 74.1
+    assert data["passed"] is False
+    assert data["regression_count"] == 1
+
+    occlusion = data["boundaries"][1]
+
+    assert (
+        occlusion["regression_reason"]
+        == "threshold"
+    )
+
+
+def test_comparison_html_export(tmp_path):
+    comparison = make_comparison()
+
+    path = comparison.save_html(
+        tmp_path / "comparison.html"
+    )
+
+    content = path.read_text(
+        encoding="utf-8"
+    )
+
+    assert "FailureLab Model Comparison" in content
+    assert "REGRESSION DETECTED" in content
+    assert "75.0" in content
+    assert "74.1" in content
+    assert "Occlusion" in content
+    assert "Threshold Regression" in content
+    assert "Failure threshold:" in content
