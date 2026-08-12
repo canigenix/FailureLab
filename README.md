@@ -1,64 +1,98 @@
 # FailureLab
 
-**Stress-test computer vision models, discover where they fail, and prevent robustness regressions before deployment.**
+**Find where vision models fail — before those failures reach production.**
 
-FailureLab is a Python toolkit for evaluating the robustness of image-classification models under realistic image degradation.
+FailureLab is an open-source Python framework for **stress-testing computer vision models, measuring robustness degradation, and detecting regressions between model versions**.
 
-Instead of reporting only clean-set accuracy, FailureLab deliberately stresses a model with blur, occlusion, rotation, compression, brightness changes, and cropping to answer questions such as:
+Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
-- How robust is this model?
-- What is its biggest weakness?
-- How quickly does it fail as conditions worsen?
-- Did a new model become more or less robust?
-- Should a candidate model be blocked from deployment?
+> **What breaks it, how badly does it break, and did the next version get worse?**
 
-FailureLab produces robustness scores, ranked weaknesses, failure thresholds, recommendations, HTML/JSON reports, reusable model snapshots, and CI-compatible regression gates.
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
+
+---
+
+## What FailureLab Does
+
+FailureLab deliberately degrades images using realistic perturbations and measures how model behavior changes.
+
+```text
+                     FailureLab
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+   Stress Model     Diagnose Failure   Compare Versions
+        │                │                │
+   Brightness        Weaknesses        Baseline
+   Blur              Severity             vs
+   Compression       Score             Candidate
+   Occlusion         Thresholds           │
+   Rotation          Recommendations      ▼
+   Crop                              Regression Gate
+                                          │
+                                     PASS / FAIL
+```
+
+A typical evaluation can produce:
+
+```text
+FailureLab score: 72.9/100 (C) — Needs Improvement.
+Primary weakness: Occlusion.
+
+Occlusion   CRITICAL   Top-1 drop: 50.2%
+Blur        CRITICAL   Top-1 drop: 30.4%
+Rotation    MEDIUM     Top-1 drop:  7.3%
+```
+
+FailureLab can then sweep perturbation severity to determine **when failure begins**, save the result as a robustness snapshot, and compare it against future model versions.
 
 ---
 
 ## Why FailureLab?
 
-A model can perform well on a clean validation dataset and still behave poorly when real-world inputs differ from the training data.
+Clean validation accuracy does not tell you how a model behaves when production inputs are imperfect.
 
-Images encountered in production may be:
+A model that performs well on clean images may become unreliable when an image is:
 
-- blurry
-- partially blocked
+- partially occluded
+- out of focus
+- compressed
 - rotated
 - tightly cropped
-- heavily compressed
 - poorly illuminated
 
-Traditional accuracy metrics may not reveal these weaknesses.
+FailureLab turns these conditions into **repeatable robustness tests**.
 
-FailureLab evaluates how model performance changes when those conditions are introduced intentionally.
+That enables a workflow like:
 
 ```text
-Clean Dataset
-     |
-     v
-+------------------+
-|    FailureLab    |
-+------------------+
-     |
-     +--> Brightness
-     +--> Blur
-     +--> Compression
-     +--> Occlusion
-     +--> Rotation
-     +--> Crop
-     |
-     v
-Robustness Analysis
-     |
-     +--> Score
-     +--> Weakness Ranking
-     +--> Failure Thresholds
-     +--> Recommendations
-     +--> HTML / JSON Reports
-     +--> Model Comparison
-     +--> CI Regression Gate
+Train Model
+    │
+    ▼
+Run FailureLab
+    │
+    ▼
+Measure Failure Envelope
+    │
+    ▼
+Save Robustness Snapshot
+    │
+    ▼
+Train Candidate Model
+    │
+    ▼
+Compare Against Baseline
+    │
+    ├──── PASS ────► Continue
+    │
+    └──── FAIL ────► Block Regression
 ```
+
+The goal is to move robustness testing **into the development and CI/CD process**, rather than discovering model weaknesses after deployment.
 
 ---
 
@@ -102,6 +136,12 @@ For development:
 
 ```bash
 pip install -e .
+```
+
+To install the optional PyTorch dependencies used by the vision examples:
+
+```bash
+pip install ".[vision]"
 ```
 
 Verify the installation:
@@ -263,7 +303,7 @@ Example:
 FailureLab score: 72.9/100 (C) — Needs Improvement.
 ```
 
-The score is designed to provide a compact model-level robustness signal while the detailed report explains the underlying weaknesses.
+The score provides a compact model-level robustness signal while the detailed report explains the underlying weaknesses.
 
 ---
 
@@ -296,7 +336,7 @@ Recommendations are generated for meaningful robustness weaknesses.
 
 A single perturbation level does not reveal when a model begins to fail.
 
-FailureLab can therefore sweep through increasingly severe conditions.
+FailureLab can sweep through increasingly severe conditions.
 
 ```python
 blur_sweep = lab.sweep("blur")
@@ -444,9 +484,7 @@ comparison = compare_reports(
     candidate_report,
 )
 
-print(
-    comparison.summary()
-)
+print(comparison.summary())
 ```
 
 Example:
@@ -739,9 +777,7 @@ comparison = compare_reports(
     candidate_report,
 )
 
-print(
-    comparison.summary()
-)
+print(comparison.summary())
 
 
 # Enforce deployment gate
@@ -850,7 +886,8 @@ FailureLab/
 |   └── model_comparison_demo.py
 |
 ├── tests/
-|
+├── LICENSE
+├── NOTICE
 ├── pyproject.toml
 └── README.md
 ```
@@ -861,9 +898,9 @@ FailureLab/
 
 FailureLab is built around a simple idea:
 
-> Model evaluation should identify not only whether a model works, but how it fails.
+> **Model evaluation should identify not only whether a model works, but how it fails.**
 
-The project therefore focuses on four questions:
+The project focuses on four questions:
 
 1. **What breaks the model?**
 2. **How severe is the weakness?**
@@ -880,7 +917,7 @@ FailureLab currently focuses on **image-classification robustness**.
 
 The built-in stress suite evaluates common image perturbations, but it does not attempt to model every possible real-world distribution shift or establish that a model is safe for a particular deployment.
 
-Robustness scores and thresholds should therefore be interpreted as engineering diagnostics under the configured FailureLab evaluation—not as guarantees of model safety or real-world performance.
+Robustness scores and thresholds should therefore be interpreted as engineering diagnostics under the configured FailureLab evaluation — not as guarantees of model safety or real-world performance.
 
 ---
 
@@ -893,11 +930,11 @@ Potential future directions include:
 - Dataset-level robustness analytics
 - Per-class failure analysis
 - Configurable scoring profiles
-- richer CI policies
-- report trend history
-- additional model/task support
-- expanded visualization
-- integration with model-training pipelines
+- Richer CI policies
+- Report trend history
+- Additional model/task support
+- Expanded visualization
+- Integration with model-training pipelines
 
 ---
 
@@ -917,6 +954,6 @@ The project has working package builds, automated tests, command-line tooling, m
 
 ## License
 
-FailureLab is licensed under the Apache License 2.0.
+FailureLab is licensed under the **Apache License 2.0**.
 
-See the `LICENSE` file for the full license terms.
+See `LICENSE` and `NOTICE` for details.
