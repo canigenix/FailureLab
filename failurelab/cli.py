@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from failurelab.vision_report import VisionWeakness
-from failurelab.visualization import plot_robustness_drops
+
 
 from .comparison import (
     BoundaryComparison,
@@ -386,6 +386,8 @@ def run_visualize(
     input_path: Path,
     output_path: Path,
 ) -> int:
+    from failurelab.visualization import plot_robustness_drops
+
     with input_path.open(
         "r",
         encoding="utf-8",
