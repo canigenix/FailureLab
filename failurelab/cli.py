@@ -5,7 +5,8 @@ import json
 import sys
 from pathlib import Path
 
-from failurelab import __version__
+from failurelab.vision_report import VisionWeakness
+from failurelab.visualization import plot_robustness_drops
 
 from .comparison import (
     BoundaryComparison,
@@ -13,6 +14,11 @@ from .comparison import (
     RobustnessRegressionError,
 )
 from .policy import load_policy
+
+try:
+    from . import __version__
+except ImportError:  # pragma: no cover - fallback for local execution
+    __version__ = "0.0.0"
 
 
 def build_parser():
@@ -74,6 +80,24 @@ def build_parser():
             "before a regression is reported. Default: 0.02."
         ),
     )
+
+    visualize_parser = subparsers.add_parser(
+        "visualize",
+        help="Generate a robustness visualization from a report.",
+    )
+
+    visualize_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("failurelab_robustness.png"),
+        help="Output path for the generated PNG chart.",
+    )
+    visualize_parser.add_argument(
+    "--input",
+    type=Path,
+    required=True,
+    help="JSON file containing vision robustness weaknesses.",
+)
 
     return parser
 
@@ -358,6 +382,50 @@ def run_compare(
 
     return 0
 
+def run_visualize(
+    input_path: Path,
+    output_path: Path,
+) -> int:
+    with input_path.open(
+        "r",
+        encoding="utf-8",
+    ) as handle:
+        data = json.load(handle)
+
+    if isinstance(data, dict):
+        rows = data.get("weaknesses", [])
+    elif isinstance(data, list):
+        rows = data
+    else:
+        raise ValueError(
+            "Visualization input must be a JSON list "
+            "or contain a 'weaknesses' list."
+        )
+
+    weaknesses = [
+        VisionWeakness(
+            name=row["name"],
+            severity=row["severity"],
+            top1_drop=float(row["top1_drop"]),
+            top5_drop=float(row["top5_drop"]),
+            confidence_drop=float(row["confidence_drop"]),
+        )
+        for row in rows
+    ]
+
+    plot_robustness_drops(
+        weaknesses,
+        output_path=output_path,
+    )
+
+    print(
+        f"Robustness visualization saved to {output_path}"
+    )
+
+    return 0
+
+
+
 
 def main():
     args = build_parser().parse_args()
@@ -373,6 +441,12 @@ def main():
                 baseline_path=args.baseline,
                 candidate_path=args.candidate,
                 regression_tolerance=args.tolerance,
+            )
+
+        if args.command == "visualize":
+            return run_visualize(
+                input_path=args.input,
+                output_path=args.output,
             )
 
     except (

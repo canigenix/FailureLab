@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "failurelab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Automated failure discovery, robustness testing, and regression gating for machine learning models."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,6 +51,10 @@ vision = [
     "torchvision"
 ]
 
+visualization = [
+    "matplotlib>=3.7"
+]
+
 dev = [
     "pytest",
     "pytest-cov",
@@ -58,7 +62,7 @@ dev = [
 ]
 
 all = [
-    "failurelab[vision,dev]"
+    "failurelab[vision,visualization,dev]"
 ]
 
 

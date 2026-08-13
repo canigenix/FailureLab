@@ -1,6 +1,7 @@
 """FailureLab public package interface."""
 
 from failurelab.api import (
+    
     FailureLab,
     FailureLabReport,
 )
@@ -10,6 +11,8 @@ from failurelab.comparison import (
     RobustnessRegressionError,
     compare_reports,
 )
+
+from failurelab.custom_stress import CustomStressTest
 from failurelab.failure_envelope import (
     FailureBoundary,
     FailureEnvelope,
@@ -24,6 +27,10 @@ __all__ = [
     "ModelComparison",
     "RobustnessRegressionError",
     "compare_reports",
+    "CustomStressTest",
+    
 ]
 
-__version__ = "0.1.0"
+
+
+__version__ = "0.2.0"
