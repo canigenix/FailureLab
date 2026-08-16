@@ -5,8 +5,11 @@ import json
 import sys
 from pathlib import Path
 
+from failurelab.config import (
+    build_stress_tests,
+    load_suite_config,
+)
 from failurelab.vision_report import VisionWeakness
-
 
 from .comparison import (
     BoundaryComparison,
@@ -17,7 +20,7 @@ from .policy import load_policy
 
 try:
     from . import __version__
-except ImportError:  # pragma: no cover - fallback for local execution
+except ImportError:  # pragma: no cover
     __version__ = "0.0.0"
 
 
@@ -87,17 +90,30 @@ def build_parser():
     )
 
     visualize_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing vision robustness weaknesses.",
+    )
+
+    visualize_parser.add_argument(
         "--output",
         type=Path,
         default=Path("failurelab_robustness.png"),
         help="Output path for the generated PNG chart.",
     )
-    visualize_parser.add_argument(
-    "--input",
-    type=Path,
-    required=True,
-    help="JSON file containing vision robustness weaknesses.",
-)
+
+    suite_parser = subparsers.add_parser(
+        "suite",
+        help="Validate and inspect a configured stress suite.",
+    )
+
+    suite_parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to a FailureLab stress-suite JSON configuration.",
+    )
 
     return parser
 
@@ -382,6 +398,7 @@ def run_compare(
 
     return 0
 
+
 def run_visualize(
     input_path: Path,
     output_path: Path,
@@ -395,9 +412,14 @@ def run_visualize(
         data = json.load(handle)
 
     if isinstance(data, dict):
-        rows = data.get("weaknesses", [])
+        rows = data.get(
+            "weaknesses",
+            [],
+        )
+
     elif isinstance(data, list):
         rows = data
+
     else:
         raise ValueError(
             "Visualization input must be a JSON list "
@@ -408,9 +430,15 @@ def run_visualize(
         VisionWeakness(
             name=row["name"],
             severity=row["severity"],
-            top1_drop=float(row["top1_drop"]),
-            top5_drop=float(row["top5_drop"]),
-            confidence_drop=float(row["confidence_drop"]),
+            top1_drop=float(
+                row["top1_drop"]
+            ),
+            top5_drop=float(
+                row["top5_drop"]
+            ),
+            confidence_drop=float(
+                row["confidence_drop"]
+            ),
         )
         for row in rows
     ]
@@ -427,6 +455,27 @@ def run_visualize(
     return 0
 
 
+def run_suite(
+    config_path: Path,
+) -> int:
+    config = load_suite_config(
+        config_path
+    )
+
+    stress_tests = build_stress_tests(
+        config
+    )
+
+    print(
+        f"Loaded {len(stress_tests)} configured stress test(s)."
+    )
+
+    for stress_test in stress_tests:
+        print(
+            f"- {stress_test.name}"
+        )
+
+    return 0
 
 
 def main():
@@ -449,6 +498,11 @@ def main():
             return run_visualize(
                 input_path=args.input,
                 output_path=args.output,
+            )
+
+        if args.command == "suite":
+            return run_suite(
+                config_path=args.config,
             )
 
     except (
