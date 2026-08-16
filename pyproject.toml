@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "failurelab"
-version = "0.2.0"
+version = "0.3.0"
 description = "Automated failure discovery, robustness testing, and regression gating for machine learning models."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 
 authors = [
-    { name = "Eren" }
+    { name = "Harun Musa" }
 ]
 
 keywords = [

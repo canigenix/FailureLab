@@ -1,33 +1,30 @@
-# Changelog
-
-All notable changes to FailureLab will be documented in this file.
-
-## [0.2.0] - 2026-08-12
+## [0.3.0] - 2026-08-16
 
 ### Added
 
-- Per-class robustness analysis.
-- Per-class stressed failure rates.
-- Prediction flip-rate analysis.
-- Top confusion-class detection.
-- Custom user-defined stress tests.
-- Robustness degradation visualizations.
-- `failurelab visualize` CLI command.
-- Headless chart generation for CI and server environments.
-- Optional `visualization` dependency.
+- JSON-configured stress suites.
+- Suite-level maximum degradation thresholds.
+- Automated suite PASS/FAIL status.
+- Experiment runner with persisted result artifacts.
+- Persistent suite history.
+- Model IDs and run IDs for experiment tracking.
+- Robustness trend detection.
+- Model-specific history queries.
+- Batch experiment execution.
+- Batch JSON summaries.
+- `suite` and `history` CLI workflows.
+- Expanded public Python API.
 
 ### Improved
 
-- Vision diagnostics now expose more detailed class-level failure behavior.
-- Stress testing can be extended with custom transformations.
-- Visualization dependencies are separated from the lightweight core package.
-- CLI functionality expanded for robustness visualization.
-- Test coverage expanded across the new v0.2.0 functionality.
+- Robustness workflows can now be configured and repeated without rebuilding evaluation logic manually.
+- Experiment results can be tracked across model versions and repeated runs.
+- CLI workflows now support suite inspection and history analysis.
+- Release packaging and public API coverage expanded for v0.3.0.
 
 ### Validation
 
-- 89 automated tests passing.
-- Source distribution and wheel build successfully.
-- Clean core installation verified.
-- Visualization extra installation verified independently.
-- CLI and headless visualization behavior verified.
+- 116 automated tests passing.
+- v0.3.0 wheel and source distribution built successfully.
+- Clean isolated wheel installation verified.
+- Installed CLI and public API verified.
