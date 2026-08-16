@@ -118,7 +118,7 @@ def build_parser():
 
     history_parser = subparsers.add_parser(
         "history",
-        help="Inspect robustness history for a configured suite.",
+        help="Inspect robustness history for a suite or model.",
     )
 
     history_parser.add_argument(
@@ -128,10 +128,18 @@ def build_parser():
         help="Path to a FailureLab suite-history JSON file.",
     )
 
-    history_parser.add_argument(
+    history_target = history_parser.add_mutually_exclusive_group(
+        required=True
+    )
+
+    history_target.add_argument(
         "--suite",
-        required=True,
         help="Suite name to inspect.",
+    )
+
+    history_target.add_argument(
+        "--model",
+        help="Model ID to inspect.",
     )
 
     history_parser.add_argument(
@@ -518,30 +526,55 @@ def run_suite(
 
 def run_history(
     input_path: Path,
-    suite_name: str,
+    suite_name: str | None,
+    model_id: str | None,
     tolerance: float,
 ) -> int:
     history = SuiteHistory.load_json(
         input_path
     )
 
-    latest = history.latest_for_suite(
-        suite_name
-    )
-
-    if latest is None:
-        raise ValueError(
-            f"no history found for suite '{suite_name}'."
+    if suite_name is not None:
+        latest = history.latest_for_suite(
+            suite_name
         )
 
-    trend = history.trend(
-        suite_name,
-        tolerance=tolerance,
-    )
+        if latest is None:
+            raise ValueError(
+                f"no history found for suite '{suite_name}'."
+            )
 
-    print(
-        f"Suite: {suite_name}"
-    )
+        trend = history.trend(
+            suite_name,
+            tolerance=tolerance,
+        )
+
+        print(
+            f"Suite: {suite_name}"
+        )
+
+    else:
+        latest = history.latest_for_model(
+            model_id
+        )
+
+        if latest is None:
+            raise ValueError(
+                f"no history found for model '{model_id}'."
+            )
+
+        trend = history.model_trend(
+            model_id,
+            tolerance=tolerance,
+        )
+
+        print(
+            f"Model: {model_id}"
+        )
+
+        print(
+            f"Suite: {latest.suite_name}"
+        )
 
     print(
         f"Latest status: {latest.status}"
@@ -558,6 +591,11 @@ def run_history(
     print(
         f"Trend: {trend}"
     )
+
+    if latest.run_id is not None:
+        print(
+            f"Run ID: {latest.run_id}"
+        )
 
     return 0
 
@@ -593,6 +631,7 @@ def main():
             return run_history(
                 input_path=args.input,
                 suite_name=args.suite,
+                model_id=args.model,
                 tolerance=args.tolerance,
             )
 

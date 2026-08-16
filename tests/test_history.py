@@ -142,3 +142,76 @@ def test_suite_history_detects_improvement():
     )
 
     assert history.trend("production-vision") == "improved"
+
+
+def test_suite_history_queries_by_model():
+    history = SuiteHistory(
+        entries=[
+            HistoryEntry(
+                suite_name="production-vision",
+                timestamp="2026-08-16T10:00:00+00:00",
+                status="passed",
+                worst_stress="blur_2.00",
+                worst_drop=0.10,
+                maximum_drop=0.20,
+                model_id="resnet18-v1",
+                run_id="run-001",
+            ),
+            HistoryEntry(
+                suite_name="production-vision",
+                timestamp="2026-08-16T11:00:00+00:00",
+                status="passed",
+                worst_stress="blur_2.00",
+                worst_drop=0.12,
+                maximum_drop=0.20,
+                model_id="mobilenet-v1",
+                run_id="run-002",
+            ),
+        ]
+    )
+
+    entries = history.entries_for_model(
+        "resnet18-v1"
+    )
+
+    assert len(entries) == 1
+    assert entries[0].run_id == "run-001"
+
+    latest = history.latest_for_model(
+        "resnet18-v1"
+    )
+
+    assert latest is not None
+    assert latest.model_id == "resnet18-v1"
+
+
+def test_suite_history_detects_model_regression():
+    history = SuiteHistory(
+        entries=[
+            HistoryEntry(
+                suite_name="production-vision",
+                timestamp="2026-08-16T10:00:00+00:00",
+                status="passed",
+                worst_stress="blur_2.00",
+                worst_drop=0.10,
+                maximum_drop=0.20,
+                model_id="resnet18-v3",
+                run_id="run-001",
+            ),
+            HistoryEntry(
+                suite_name="production-vision",
+                timestamp="2026-08-16T11:00:00+00:00",
+                status="passed",
+                worst_stress="blur_2.00",
+                worst_drop=0.18,
+                maximum_drop=0.20,
+                model_id="resnet18-v3",
+                run_id="run-002",
+            ),
+        ]
+    )
+
+    assert (
+        history.model_trend("resnet18-v3")
+        == "regressed"
+    )
