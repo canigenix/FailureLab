@@ -11,9 +11,17 @@ from failurelab.vision_runner import (
 )
 
 
+@dataclass(frozen=True)
+class SavedStressResult:
+    name: str
+    top1_drop: float
+    top5_drop: float
+    target_confidence_drop: float
+
+
 @dataclass
 class SuiteResult:
-    results: list[VisionStressResult]
+    results: list[VisionStressResult | SavedStressResult]
     name: str = "default"
     maximum_drop: float | None = None
 
@@ -22,7 +30,9 @@ class SuiteResult:
         return len(self.results)
 
     @property
-    def worst_result(self) -> VisionStressResult:
+    def worst_result(
+        self,
+    ) -> VisionStressResult | SavedStressResult:
         if not self.results:
             raise ValueError(
                 "suite result contains no stress results."
@@ -110,6 +120,88 @@ class SuiteResult:
             encoding="utf-8",
         )
 
+    @classmethod
+    def load_json(
+        cls,
+        path: str | Path,
+    ) -> "SuiteResult":
+        path = Path(path)
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"suite result file not found: {path}"
+            )
+
+        data = json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        if not isinstance(data, dict):
+            raise ValueError(
+                "suite result must be a JSON object."
+            )
+
+        raw_results = data.get(
+            "results"
+        )
+
+        if not isinstance(
+            raw_results,
+            list,
+        ) or not raw_results:
+            raise ValueError(
+                "suite result must contain "
+                "a non-empty 'results' list."
+            )
+
+        results = []
+
+        for row in raw_results:
+            if not isinstance(row, dict):
+                raise ValueError(
+                    "each saved stress result "
+                    "must be an object."
+                )
+
+            results.append(
+                SavedStressResult(
+                    name=str(
+                        row["name"]
+                    ),
+                    top1_drop=float(
+                        row["top1_drop"]
+                    ),
+                    top5_drop=float(
+                        row["top5_drop"]
+                    ),
+                    target_confidence_drop=float(
+                        row["confidence_drop"]
+                    ),
+                )
+            )
+
+        maximum_drop = data.get(
+            "maximum_drop"
+        )
+
+        if maximum_drop is not None:
+            maximum_drop = float(
+                maximum_drop
+            )
+
+        return cls(
+            results=results,
+            name=str(
+                data.get(
+                    "suite_name",
+                    "default",
+                )
+            ),
+            maximum_drop=maximum_drop,
+        )
+
 
 class ConfiguredSuiteRunner:
     def __init__(self, predict_proba_fn):
@@ -122,7 +214,9 @@ class ConfiguredSuiteRunner:
         dataset,
         config: SuiteConfig,
     ) -> SuiteResult:
-        stress_tests = build_stress_tests(config)
+        stress_tests = build_stress_tests(
+            config
+        )
 
         results = []
 
@@ -132,7 +226,9 @@ class ConfiguredSuiteRunner:
                 stress_test=stress_test,
             )
 
-            results.append(result)
+            results.append(
+                result
+            )
 
         return SuiteResult(
             results=results,

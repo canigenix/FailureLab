@@ -10,6 +10,8 @@ from failurelab.config import (
     load_suite_config,
 )
 from failurelab.history import SuiteHistory
+from failurelab.policy_config import load_robustness_policy
+from failurelab.robustness_policy import evaluate_policy
 from failurelab.vision_report import VisionWeakness
 
 from .comparison import (
@@ -150,6 +152,25 @@ def build_parser():
             "Maximum change treated as stable. "
             "Default: 0.01."
         ),
+    )
+
+    policy_parser = subparsers.add_parser(
+        "policy-evaluate",
+        help="Evaluate saved suite results against a robustness policy.",
+    )
+
+    policy_parser.add_argument(
+        "--result",
+        type=Path,
+        required=True,
+        help="Saved FailureLab suite-result JSON file.",
+    )
+
+    policy_parser.add_argument(
+        "--policy",
+        type=Path,
+        required=True,
+        help="Robustness policy JSON file.",
     )
 
     return parser
@@ -600,6 +621,57 @@ def run_history(
     return 0
 
 
+def run_policy_evaluate(
+    result_path: Path,
+    policy_path: Path,
+) -> int:
+    from failurelab.suite_runner import SuiteResult
+
+    result = SuiteResult.load_json(
+        result_path
+    )
+
+    policy = load_robustness_policy(
+        policy_path
+    )
+
+    evaluation = evaluate_policy(
+        result,
+        policy,
+    )
+
+    print(
+        f"Suite: {result.name}"
+    )
+
+    print(
+        f"Policy status: {evaluation.status}"
+    )
+
+    if evaluation.violations:
+        for violation in evaluation.violations:
+            print(
+                f"- {violation.stress_name}: "
+                f"{violation.metric} "
+                f"{violation.observed:.2%} "
+                f"> {violation.allowed:.2%}"
+            )
+
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
+
 def main():
     args = build_parser().parse_args()
 
@@ -633,6 +705,12 @@ def main():
                 suite_name=args.suite,
                 model_id=args.model,
                 tolerance=args.tolerance,
+            )
+
+        if args.command == "policy-evaluate":
+            return run_policy_evaluate(
+                result_path=args.result,
+                policy_path=args.policy,
             )
 
     except (
