@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from failurelab.class_policy_config import load_class_policy
 
 from failurelab.config import (
     build_stress_tests,
@@ -171,6 +170,13 @@ def build_parser():
         type=Path,
         required=True,
         help="Robustness policy JSON file.",
+    )
+
+    policy_parser.add_argument(
+        "--class-policy",
+        type=Path,
+        default=None,
+        help="Optional class-level robustness policy JSON file.",
     )
 
     return parser
@@ -624,7 +630,9 @@ def run_history(
 def run_policy_evaluate(
     result_path: Path,
     policy_path: Path,
+    class_policy_path: Path | None = None,
 ) -> int:
+    from failurelab.policy_report import build_policy_report
     from failurelab.suite_runner import SuiteResult
 
     result = SuiteResult.load_json(
@@ -635,9 +643,22 @@ def run_policy_evaluate(
         policy_path
     )
 
-    evaluation = evaluate_policy(
+    if class_policy_path is not None:
+        (
+            default_class_policy,
+            class_policies,
+        ) = load_class_policy(
+            class_policy_path
+        )
+    else:
+        default_class_policy = None
+        class_policies = None
+
+    report = build_policy_report(
         result,
         policy,
+        default_class_policy=default_class_policy,
+        class_policies=class_policies,
     )
 
     print(
@@ -645,18 +666,32 @@ def run_policy_evaluate(
     )
 
     print(
-        f"Policy status: {evaluation.status}"
+        f"Policy status: {report.policy_status}"
     )
 
-    if evaluation.violations:
-        for violation in evaluation.violations:
-            print(
-                f"- {violation.stress_name}: "
-                f"{violation.metric} "
-                f"{violation.observed:.2%} "
-                f"> {violation.allowed:.2%}"
-            )
+    if class_policy_path is not None:
+        print(
+            f"Class policy status: "
+            f"{report.class_policy_status}"
+        )
 
+    for violation in report.evaluation.violations:
+        print(
+            f"- {violation.stress_name}: "
+            f"{violation.metric} "
+            f"{violation.observed:.2%} "
+            f"> {violation.allowed:.2%}"
+        )
+
+    for violation in report.class_evaluation.violations:
+        print(
+            f"- class {violation.class_index}: "
+            f"{violation.metric} "
+            f"{violation.observed:.2%} "
+            f"> {violation.allowed:.2%}"
+        )
+
+    if not report.passed:
         print()
         print(
             "RESULT: FAILED"
@@ -670,7 +705,6 @@ def run_policy_evaluate(
     )
 
     return 0
-
 
 def main():
     args = build_parser().parse_args()
@@ -711,6 +745,7 @@ def main():
             return run_policy_evaluate(
                 result_path=args.result,
                 policy_path=args.policy,
+                class_policy_path=args.class_policy,
             )
 
     except (

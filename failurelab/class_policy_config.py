@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from failurelab.class_policy import ClassPolicy
+
+
+def _optional_float(
+    data: dict,
+    key: str,
+) -> float | None:
+    value = data.get(key)
+
+    if value is None:
+        return None
+
+    try:
+        value = float(value)
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValueError(
+            f"class policy field '{key}' must be numeric."
+        ) from exc
+
+    if value < 0:
+        raise ValueError(
+            f"class policy field '{key}' cannot be negative."
+        )
+
+    return value
+
+
+def _build_policy(
+    data: dict,
+) -> ClassPolicy:
+    return ClassPolicy(
+        maximum_accuracy_drop=_optional_float(
+            data,
+            "maximum_accuracy_drop",
+        ),
+        maximum_confidence_drop=_optional_float(
+            data,
+            "maximum_confidence_drop",
+        ),
+        maximum_failure_rate=_optional_float(
+            data,
+            "maximum_failure_rate",
+        ),
+        maximum_flip_rate=_optional_float(
+            data,
+            "maximum_flip_rate",
+        ),
+    )
+
+
+def load_class_policy(
+    path: str | Path,
+) -> tuple[
+    ClassPolicy,
+    dict[int, ClassPolicy],
+]:
+    path = Path(path)
+
+    data = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            "class policy must be a JSON object."
+        )
+
+    default_data = data.get(
+        "default",
+        {},
+    )
+
+    if not isinstance(
+        default_data,
+        dict,
+    ):
+        raise ValueError(
+            "class policy 'default' must be an object."
+        )
+
+    raw_classes = data.get(
+        "classes",
+        {},
+    )
+
+    if not isinstance(
+        raw_classes,
+        dict,
+    ):
+        raise ValueError(
+            "class policy 'classes' must be an object."
+        )
+
+    class_policies: dict[int, ClassPolicy] = {}
+
+    for class_key, class_data in raw_classes.items():
+        if not isinstance(
+            class_data,
+            dict,
+        ):
+            raise ValueError(
+                f"class policy '{class_key}' must be an object."
+            )
+
+        try:
+            class_index = int(
+                class_key
+            )
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise ValueError(
+                f"class policy key '{class_key}' "
+                "must be an integer class index."
+            ) from exc
+
+        if class_index < 0:
+            raise ValueError(
+                "class policy indices cannot be negative."
+            )
+
+        class_policies[
+            class_index
+        ] = _build_policy(
+            class_data
+        )
+
+    return (
+        _build_policy(
+            default_data
+        ),
+        class_policies,
+    )

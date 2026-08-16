@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 
+from failurelab.class_analysis import (
+    ClassRobustnessResult,
+    analyze_class_robustness,
+)
 from failurelab.config import SuiteConfig, build_stress_tests
 from failurelab.vision_runner import (
     VisionStressResult,
@@ -17,6 +21,9 @@ class SavedStressResult:
     top1_drop: float
     top5_drop: float
     target_confidence_drop: float
+    class_results: list[ClassRobustnessResult] = field(
+        default_factory=list
+    )
 
 
 @dataclass
@@ -82,12 +89,84 @@ class SuiteResult:
         if self.passed is None:
             return "not_evaluated"
 
-        if self.passed:
-            return "passed"
+        return (
+            "passed"
+            if self.passed
+            else "failed"
+        )
 
-        return "failed"
+    def _class_results_for(
+        self,
+        result,
+    ) -> list[ClassRobustnessResult]:
+        if isinstance(
+            result,
+            SavedStressResult,
+        ):
+            return result.class_results
+
+        return analyze_class_robustness(
+            result.baseline_probabilities,
+            result.stressed_probabilities,
+            result.targets,
+        )
 
     def to_dict(self) -> dict:
+        rows = []
+
+        for result in self.results:
+            class_results = self._class_results_for(
+                result
+            )
+
+            rows.append(
+                {
+                    "name": result.name,
+                    "top1_drop": result.top1_drop,
+                    "top5_drop": result.top5_drop,
+                    "confidence_drop": (
+                        result.target_confidence_drop
+                    ),
+                    "class_results": [
+                        {
+                            "class_index": row.class_index,
+                            "sample_count": row.sample_count,
+                            "baseline_accuracy": (
+                                row.baseline_accuracy
+                            ),
+                            "stressed_accuracy": (
+                                row.stressed_accuracy
+                            ),
+                            "accuracy_drop": (
+                                row.accuracy_drop
+                            ),
+                            "baseline_confidence": (
+                                row.baseline_confidence
+                            ),
+                            "stressed_confidence": (
+                                row.stressed_confidence
+                            ),
+                            "confidence_drop": (
+                                row.confidence_drop
+                            ),
+                            "stressed_failure_rate": (
+                                row.stressed_failure_rate
+                            ),
+                            "prediction_flip_rate": (
+                                row.prediction_flip_rate
+                            ),
+                            "top_confusion_class": (
+                                row.top_confusion_class
+                            ),
+                            "top_confusion_rate": (
+                                row.top_confusion_rate
+                            ),
+                        }
+                        for row in class_results
+                    ],
+                }
+            )
+
         return {
             "suite_name": self.name,
             "stress_count": self.count,
@@ -95,15 +174,7 @@ class SuiteResult:
             "status": self.status,
             "worst_stress": self.worst_result.name,
             "worst_drop": self.worst_drop,
-            "results": [
-                {
-                    "name": result.name,
-                    "top1_drop": result.top1_drop,
-                    "top5_drop": result.top5_drop,
-                    "confidence_drop": result.target_confidence_drop,
-                }
-                for result in self.results
-            ],
+            "results": rows,
         }
 
     def save_json(
@@ -147,10 +218,10 @@ class SuiteResult:
             "results"
         )
 
-        if not isinstance(
-            raw_results,
-            list,
-        ) or not raw_results:
+        if (
+            not isinstance(raw_results, list)
+            or not raw_results
+        ):
             raise ValueError(
                 "suite result must contain "
                 "a non-empty 'results' list."
@@ -163,6 +234,78 @@ class SuiteResult:
                 raise ValueError(
                     "each saved stress result "
                     "must be an object."
+                )
+
+            class_results = []
+
+            for class_row in row.get(
+                "class_results",
+                [],
+            ):
+                class_results.append(
+                    ClassRobustnessResult(
+                        class_index=int(
+                            class_row["class_index"]
+                        ),
+                        sample_count=int(
+                            class_row["sample_count"]
+                        ),
+                        baseline_accuracy=float(
+                            class_row[
+                                "baseline_accuracy"
+                            ]
+                        ),
+                        stressed_accuracy=float(
+                            class_row[
+                                "stressed_accuracy"
+                            ]
+                        ),
+                        accuracy_drop=float(
+                            class_row["accuracy_drop"]
+                        ),
+                        baseline_confidence=float(
+                            class_row[
+                                "baseline_confidence"
+                            ]
+                        ),
+                        stressed_confidence=float(
+                            class_row[
+                                "stressed_confidence"
+                            ]
+                        ),
+                        confidence_drop=float(
+                            class_row[
+                                "confidence_drop"
+                            ]
+                        ),
+                        stressed_failure_rate=float(
+                            class_row[
+                                "stressed_failure_rate"
+                            ]
+                        ),
+                        prediction_flip_rate=float(
+                            class_row[
+                                "prediction_flip_rate"
+                            ]
+                        ),
+                        top_confusion_class=(
+                            None
+                            if class_row.get(
+                                "top_confusion_class"
+                            )
+                            is None
+                            else int(
+                                class_row[
+                                    "top_confusion_class"
+                                ]
+                            )
+                        ),
+                        top_confusion_rate=float(
+                            class_row[
+                                "top_confusion_rate"
+                            ]
+                        ),
+                    )
                 )
 
             results.append(
@@ -179,6 +322,7 @@ class SuiteResult:
                     target_confidence_drop=float(
                         row["confidence_drop"]
                     ),
+                    class_results=class_results,
                 )
             )
 

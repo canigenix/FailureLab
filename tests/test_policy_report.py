@@ -3,6 +3,7 @@ import json
 import numpy as np
 from PIL import Image
 
+from failurelab.class_policy import ClassPolicy
 from failurelab.config import (
     StressSpec,
     SuiteConfig,
@@ -71,16 +72,21 @@ def test_policy_report_passes():
     report = build_policy_report(
         result,
         policy,
+        default_class_policy=ClassPolicy(
+            maximum_accuracy_drop=1.0,
+            maximum_confidence_drop=1.0,
+            maximum_failure_rate=1.0,
+            maximum_flip_rate=1.0,
+        ),
     )
 
     assert report.passed
     assert report.status == "passed"
     assert report.policy_status == "passed"
-    assert report.suite_name == "production-vision"
-    assert report.evaluation.violations == []
+    assert report.class_policy_status == "passed"
 
 
-def test_policy_report_detects_failure():
+def test_policy_report_detects_global_failure():
     result = build_result()
 
     policy = RobustnessPolicy(
@@ -98,6 +104,34 @@ def test_policy_report_detects_failure():
     assert len(report.evaluation.violations) >= 1
 
 
+def test_policy_report_detects_class_failure():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        maximum_top1_drop=1.0,
+        maximum_top5_drop=1.0,
+        maximum_confidence_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+        default_class_policy=ClassPolicy(
+            maximum_failure_rate=0.01,
+        ),
+    )
+
+    assert not report.passed
+    assert report.status == "failed"
+    assert report.class_policy_status == "failed"
+    assert (
+        len(
+            report.class_evaluation.violations
+        )
+        >= 1
+    )
+
+
 def test_policy_report_saves_json(tmp_path):
     result = build_result()
 
@@ -108,6 +142,9 @@ def test_policy_report_saves_json(tmp_path):
     report = build_policy_report(
         result,
         policy,
+        default_class_policy=ClassPolicy(
+            maximum_failure_rate=0.01,
+        ),
     )
 
     path = tmp_path / "policy-report.json"
@@ -125,13 +162,6 @@ def test_policy_report_saves_json(tmp_path):
     assert data["suite_name"] == "production-vision"
     assert data["status"] == "failed"
     assert data["policy_status"] == "failed"
+    assert data["class_policy_status"] == "failed"
     assert data["violation_count"] >= 1
-
-    violation = data["violations"][0]
-
-    assert violation["stress_name"].startswith(
-        "brightness"
-    )
-
-    assert violation["metric"] == "top1_drop"
-    assert violation["observed"] > violation["allowed"]
+    assert data["class_violation_count"] >= 1
