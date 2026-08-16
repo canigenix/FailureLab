@@ -9,6 +9,7 @@ from failurelab.config import (
     build_stress_tests,
     load_suite_config,
 )
+from failurelab.history import SuiteHistory
 from failurelab.vision_report import VisionWeakness
 
 from .comparison import (
@@ -113,6 +114,34 @@ def build_parser():
         type=Path,
         required=True,
         help="Path to a FailureLab stress-suite JSON configuration.",
+    )
+
+    history_parser = subparsers.add_parser(
+        "history",
+        help="Inspect robustness history for a configured suite.",
+    )
+
+    history_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="Path to a FailureLab suite-history JSON file.",
+    )
+
+    history_parser.add_argument(
+        "--suite",
+        required=True,
+        help="Suite name to inspect.",
+    )
+
+    history_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.01,
+        help=(
+            "Maximum change treated as stable. "
+            "Default: 0.01."
+        ),
     )
 
     return parser
@@ -467,13 +496,68 @@ def run_suite(
     )
 
     print(
+        f"Suite: {config.name}"
+    )
+
+    print(
         f"Loaded {len(stress_tests)} configured stress test(s)."
     )
+
+    if config.maximum_drop is not None:
+        print(
+            f"Maximum drop: {config.maximum_drop:.2%}"
+        )
 
     for stress_test in stress_tests:
         print(
             f"- {stress_test.name}"
         )
+
+    return 0
+
+
+def run_history(
+    input_path: Path,
+    suite_name: str,
+    tolerance: float,
+) -> int:
+    history = SuiteHistory.load_json(
+        input_path
+    )
+
+    latest = history.latest_for_suite(
+        suite_name
+    )
+
+    if latest is None:
+        raise ValueError(
+            f"no history found for suite '{suite_name}'."
+        )
+
+    trend = history.trend(
+        suite_name,
+        tolerance=tolerance,
+    )
+
+    print(
+        f"Suite: {suite_name}"
+    )
+
+    print(
+        f"Latest status: {latest.status}"
+    )
+
+    print(
+        f"Worst stress: {latest.worst_stress}"
+    )
+
+    print(
+        f"Worst drop: {latest.worst_drop:.2%}"
+    )
+
+    print(
+        f"Trend: {trend}"
+    )
 
     return 0
 
@@ -503,6 +587,13 @@ def main():
         if args.command == "suite":
             return run_suite(
                 config_path=args.config,
+            )
+
+        if args.command == "history":
+            return run_history(
+                input_path=args.input,
+                suite_name=args.suite,
+                tolerance=args.tolerance,
             )
 
     except (
