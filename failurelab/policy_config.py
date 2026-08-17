@@ -65,7 +65,10 @@ def load_robustness_policy(
     stresses: dict[str, StressPolicy] = {}
 
     for stress_name, stress_data in raw_stresses.items():
-        if not isinstance(stress_name, str) or not stress_name.strip():
+        if (
+            not isinstance(stress_name, str)
+            or not stress_name.strip()
+        ):
             raise ValueError(
                 "stress policy names must be non-empty strings."
             )
@@ -90,6 +93,18 @@ def load_robustness_policy(
                 stress_data,
                 "maximum_confidence_drop",
             ),
+            warning_top1_drop=_optional_float(
+                stress_data,
+                "warning_top1_drop",
+            ),
+            warning_top5_drop=_optional_float(
+                stress_data,
+                "warning_top5_drop",
+            ),
+            warning_confidence_drop=_optional_float(
+                stress_data,
+                "warning_confidence_drop",
+            ),
         )
 
     return RobustnessPolicy(
@@ -104,6 +119,18 @@ def load_robustness_policy(
         maximum_confidence_drop=_optional_float(
             data,
             "maximum_confidence_drop",
+        ),
+        warning_top1_drop=_optional_float(
+            data,
+            "warning_top1_drop",
+        ),
+        warning_top5_drop=_optional_float(
+            data,
+            "warning_top5_drop",
+        ),
+        warning_confidence_drop=_optional_float(
+            data,
+            "warning_confidence_drop",
         ),
         stresses=stresses,
     )

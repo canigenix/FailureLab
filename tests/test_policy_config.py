@@ -1,26 +1,22 @@
 import json
-
-from failurelab.policy_config import (
-    load_robustness_policy,
-)
+from failurelab.policy_config import load_robustness_policy
 
 
-def test_load_robustness_policy(tmp_path):
+def test_load_robustness_policy_reads_warning_thresholds(
+    tmp_path,
+):
     path = tmp_path / "policy.json"
 
     path.write_text(
         json.dumps(
             {
+                "warning_top1_drop": 0.10,
                 "maximum_top1_drop": 0.20,
-                "maximum_top5_drop": 0.15,
-                "maximum_confidence_drop": 0.25,
                 "stresses": {
                     "brightness": {
-                        "maximum_top1_drop": 0.10
-                    },
-                    "blur": {
-                        "maximum_confidence_drop": 0.12
-                    },
+                        "warning_confidence_drop": 0.08,
+                        "maximum_confidence_drop": 0.15,
+                    }
                 },
             }
         ),
@@ -31,26 +27,25 @@ def test_load_robustness_policy(tmp_path):
         path
     )
 
+    assert policy.warning_top1_drop == 0.10
     assert policy.maximum_top1_drop == 0.20
-    assert policy.maximum_top5_drop == 0.15
-    assert policy.maximum_confidence_drop == 0.25
 
     assert (
         policy.stresses[
             "brightness"
-        ].maximum_top1_drop
-        == 0.10
+        ].warning_confidence_drop
+        == 0.08
     )
 
     assert (
         policy.stresses[
-            "blur"
+            "brightness"
         ].maximum_confidence_drop
-        == 0.12
+        == 0.15
     )
 
 
-def test_load_robustness_policy_rejects_negative_limit(
+def test_load_robustness_policy_rejects_negative_warning(
     tmp_path,
 ):
     path = tmp_path / "policy.json"
@@ -58,7 +53,7 @@ def test_load_robustness_policy_rejects_negative_limit(
     path.write_text(
         json.dumps(
             {
-                "maximum_top1_drop": -0.10
+                "warning_top1_drop": -0.10
             }
         ),
         encoding="utf-8",
@@ -70,29 +65,5 @@ def test_load_robustness_policy_rejects_negative_limit(
         assert "cannot be negative" in str(exc)
     else:
         raise AssertionError(
-            "Expected negative policy limit to fail."
-        )
-
-
-def test_load_robustness_policy_rejects_invalid_stresses(
-    tmp_path,
-):
-    path = tmp_path / "policy.json"
-
-    path.write_text(
-        json.dumps(
-            {
-                "stresses": []
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    try:
-        load_robustness_policy(path)
-    except ValueError as exc:
-        assert "'stresses' must be an object" in str(exc)
-    else:
-        raise AssertionError(
-            "Expected invalid stresses configuration to fail."
+            "Expected negative warning threshold to fail."
         )

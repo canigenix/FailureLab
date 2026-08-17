@@ -138,3 +138,71 @@ def test_class_policy_evaluates_classes_with_enough_samples():
     assert not evaluation.passed
     assert evaluation.evaluated_classes == 2
     assert evaluation.skipped_classes == 0
+
+
+def test_class_policy_calculates_coverage():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            maximum_failure_rate=1.0,
+            minimum_samples=2,
+        ),
+    )
+
+    assert evaluation.total_classes == 2
+    assert evaluation.class_coverage == 1.0
+
+
+def test_class_policy_fails_insufficient_coverage():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            maximum_failure_rate=1.0,
+            minimum_samples=3,
+        ),
+        minimum_class_coverage=0.80,
+    )
+
+    assert evaluation.evaluated_classes == 0
+    assert evaluation.skipped_classes == 2
+    assert evaluation.class_coverage == 0.0
+    assert not evaluation.coverage_passed
+    assert not evaluation.passed
+    assert evaluation.status == "failed"
+
+
+def test_class_policy_accepts_sufficient_coverage():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            maximum_failure_rate=1.0,
+            minimum_samples=2,
+        ),
+        minimum_class_coverage=0.80,
+    )
+
+    assert evaluation.class_coverage == 1.0
+    assert evaluation.coverage_passed
+    assert evaluation.passed
+
+
+def test_class_policy_rejects_invalid_coverage():
+    results = build_results()
+
+    try:
+        evaluate_class_policy(
+            results,
+            minimum_class_coverage=1.20,
+        )
+    except ValueError as exc:
+        assert "between 0.0 and 1.0" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected invalid coverage threshold to fail."
+        )

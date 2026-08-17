@@ -204,3 +204,79 @@ def test_policy_report_saves_json(tmp_path):
         data["class_violations"][0]["sample_count"]
         == 1
     )
+
+
+def test_policy_report_preserves_warning_status():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        warning_top1_drop=0.10,
+        maximum_top1_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+    )
+
+    assert report.passed
+    assert report.has_warnings
+    assert report.status == "warning"
+    assert report.policy_status == "warning"
+
+    data = report.to_dict()
+
+    assert data["status"] == "warning"
+    assert data["warning_count"] >= 1
+    assert data["violation_count"] == 0
+    assert data["warnings"][0]["severity"] == "warning"
+
+
+def test_policy_report_enforces_class_coverage():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        maximum_top1_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+        default_class_policy=ClassPolicy(
+            maximum_failure_rate=1.0,
+            minimum_samples=2,
+        ),
+        minimum_class_coverage=0.80,
+    )
+
+    assert not report.passed
+    assert report.status == "failed"
+    assert report.class_policy_status == "failed"
+
+    assert report.class_evaluation.class_coverage == 0.0
+    assert not report.class_evaluation.coverage_passed
+
+
+def test_policy_report_exports_class_coverage():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        maximum_top1_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+        default_class_policy=ClassPolicy(
+            maximum_failure_rate=1.0,
+            minimum_samples=1,
+        ),
+        minimum_class_coverage=0.80,
+    )
+
+    data = report.to_dict()
+
+    assert data["total_classes"] == 1
+    assert data["class_coverage"] == 1.0
+    assert data["minimum_class_coverage"] == 0.80
+    assert data["coverage_passed"]

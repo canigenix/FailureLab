@@ -28,14 +28,49 @@ class ClassPolicyEvaluation:
     violations: list[ClassPolicyViolation]
     evaluated_classes: int
     skipped_classes: int
+    minimum_class_coverage: float | None = None
+
+    @property
+    def total_classes(self) -> int:
+        return (
+            self.evaluated_classes
+            + self.skipped_classes
+        )
+
+    @property
+    def class_coverage(self) -> float:
+        if self.total_classes == 0:
+            return 0.0
+
+        return (
+            self.evaluated_classes
+            / self.total_classes
+        )
+
+    @property
+    def coverage_passed(self) -> bool:
+        if self.minimum_class_coverage is None:
+            return True
+
+        return (
+            self.class_coverage
+            >= self.minimum_class_coverage
+        )
 
     @property
     def passed(self) -> bool:
-        return not self.violations
+        return (
+            not self.violations
+            and self.coverage_passed
+        )
 
     @property
     def status(self) -> str:
-        return "passed" if self.passed else "failed"
+        return (
+            "passed"
+            if self.passed
+            else "failed"
+        )
 
 
 def _validate_policy(
@@ -44,6 +79,19 @@ def _validate_policy(
     if policy.minimum_samples < 1:
         raise ValueError(
             "minimum_samples must be at least 1."
+        )
+
+
+def _validate_coverage(
+    minimum_class_coverage: float | None,
+) -> None:
+    if minimum_class_coverage is None:
+        return
+
+    if not 0.0 <= minimum_class_coverage <= 1.0:
+        raise ValueError(
+            "minimum_class_coverage must be "
+            "between 0.0 and 1.0."
         )
 
 
@@ -79,6 +127,7 @@ def evaluate_class_policy(
     results: list[ClassRobustnessResult],
     default_policy: ClassPolicy | None = None,
     class_policies: dict[int, ClassPolicy] | None = None,
+    minimum_class_coverage: float | None = None,
 ) -> ClassPolicyEvaluation:
     if default_policy is None:
         default_policy = ClassPolicy()
@@ -94,6 +143,10 @@ def evaluate_class_policy(
         _validate_policy(
             policy
         )
+
+    _validate_coverage(
+        minimum_class_coverage
+    )
 
     violations: list[ClassPolicyViolation] = []
 
@@ -167,4 +220,5 @@ def evaluate_class_policy(
         violations=violations,
         evaluated_classes=evaluated_classes,
         skipped_classes=skipped_classes,
+        minimum_class_coverage=minimum_class_coverage,
     )

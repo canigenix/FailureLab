@@ -644,21 +644,29 @@ def run_policy_evaluate(
     )
 
     if class_policy_path is not None:
+        loaded_class_policy = load_class_policy(
+            class_policy_path
+        )
+
         (
             default_class_policy,
             class_policies,
-        ) = load_class_policy(
-            class_policy_path
+        ) = loaded_class_policy
+
+        minimum_class_coverage = (
+            loaded_class_policy.minimum_class_coverage
         )
     else:
         default_class_policy = None
         class_policies = None
+        minimum_class_coverage = None
 
     report = build_policy_report(
         result,
         policy,
         default_class_policy=default_class_policy,
         class_policies=class_policies,
+        minimum_class_coverage=minimum_class_coverage,
     )
 
     print(
@@ -685,12 +693,34 @@ def run_policy_evaluate(
             f"{report.class_evaluation.skipped_classes}"
         )
 
+        print(
+            f"Class coverage: "
+            f"{report.class_evaluation.class_coverage:.2%}"
+        )
+
+        if (
+            report.class_evaluation.minimum_class_coverage
+            is not None
+        ):
+            print(
+                f"Required coverage: "
+                f"{report.class_evaluation.minimum_class_coverage:.2%}"
+            )
+
     for violation in report.evaluation.violations:
         print(
             f"- {violation.stress_name}: "
             f"{violation.metric} "
             f"{violation.observed:.2%} "
             f"> {violation.allowed:.2%}"
+        )
+
+    for warning in report.evaluation.warnings:
+        print(
+            f"- WARNING {warning.stress_name}: "
+            f"{warning.metric} "
+            f"{warning.observed:.2%} "
+            f"> {warning.allowed:.2%}"
         )
 
     for violation in report.class_evaluation.violations:
@@ -710,9 +740,15 @@ def run_policy_evaluate(
         return 1
 
     print()
-    print(
-        "RESULT: PASSED"
-    )
+
+    if report.has_warnings:
+        print(
+            "RESULT: PASSED WITH WARNINGS"
+        )
+    else:
+        print(
+            "RESULT: PASSED"
+        )
 
     return 0
 

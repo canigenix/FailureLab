@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from pathlib import Path
 
 from failurelab.class_policy import ClassPolicy
+
+
+@dataclass(frozen=True)
+class LoadedClassPolicy:
+    default_policy: ClassPolicy
+    class_policies: dict[int, ClassPolicy]
+    minimum_class_coverage: float | None = None
+
+    def __iter__(self):
+        # Keeps existing code compatible:
+        #
+        # default_policy, class_policies = load_class_policy(...)
+        yield self.default_policy
+        yield self.class_policies
 
 
 def _optional_float(
@@ -73,6 +88,39 @@ def _minimum_samples(
     return converted
 
 
+def _minimum_class_coverage(
+    data: dict,
+) -> float | None:
+    value = data.get(
+        "minimum_class_coverage"
+    )
+
+    if value is None:
+        return None
+
+    try:
+        converted = float(
+            value
+        )
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValueError(
+            "class policy field "
+            "'minimum_class_coverage' must be numeric."
+        ) from exc
+
+    if not 0.0 <= converted <= 1.0:
+        raise ValueError(
+            "class policy field "
+            "'minimum_class_coverage' must be "
+            "between 0.0 and 1.0."
+        )
+
+    return converted
+
+
 def _build_policy(
     data: dict,
 ) -> ClassPolicy:
@@ -101,10 +149,7 @@ def _build_policy(
 
 def load_class_policy(
     path: str | Path,
-) -> tuple[
-    ClassPolicy,
-    dict[int, ClassPolicy],
-]:
+) -> LoadedClassPolicy:
     path = Path(path)
 
     data = json.loads(
@@ -179,9 +224,14 @@ def load_class_policy(
             class_data
         )
 
-    return (
-        _build_policy(
+    return LoadedClassPolicy(
+        default_policy=_build_policy(
             default_data
         ),
-        class_policies,
+        class_policies=class_policies,
+        minimum_class_coverage=(
+            _minimum_class_coverage(
+                data
+            )
+        ),
     )

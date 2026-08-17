@@ -43,12 +43,20 @@ class PolicyReport:
         )
 
     @property
-    def status(self) -> str:
-        return (
-            "passed"
-            if self.passed
-            else "failed"
+    def has_warnings(self) -> bool:
+        return bool(
+            self.evaluation.warnings
         )
+
+    @property
+    def status(self) -> str:
+        if not self.passed:
+            return "failed"
+
+        if self.has_warnings:
+            return "warning"
+
+        return "passed"
 
     def to_dict(self) -> dict:
         return {
@@ -64,6 +72,9 @@ class PolicyReport:
             "violation_count": len(
                 self.evaluation.violations
             ),
+            "warning_count": len(
+                self.evaluation.warnings
+            ),
             "class_violation_count": len(
                 self.class_evaluation.violations
             ),
@@ -73,15 +84,39 @@ class PolicyReport:
             "skipped_classes": (
                 self.class_evaluation.skipped_classes
             ),
+            "total_classes": (
+                self.class_evaluation.total_classes
+            ),
+            "class_coverage": (
+                self.class_evaluation.class_coverage
+            ),
+            "minimum_class_coverage": (
+                self.class_evaluation.minimum_class_coverage
+            ),
+            "coverage_passed": (
+                self.class_evaluation.coverage_passed
+            ),
             "violations": [
                 {
                     "stress_name": violation.stress_name,
                     "metric": violation.metric,
                     "observed": violation.observed,
                     "allowed": violation.allowed,
+                    "severity": violation.severity,
                 }
                 for violation
                 in self.evaluation.violations
+            ],
+            "warnings": [
+                {
+                    "stress_name": warning.stress_name,
+                    "metric": warning.metric,
+                    "observed": warning.observed,
+                    "allowed": warning.allowed,
+                    "severity": warning.severity,
+                }
+                for warning
+                in self.evaluation.warnings
             ],
             "class_violations": [
                 {
@@ -116,6 +151,7 @@ def build_policy_report(
     policy: RobustnessPolicy,
     default_class_policy: ClassPolicy | None = None,
     class_policies: dict[int, ClassPolicy] | None = None,
+    minimum_class_coverage: float | None = None,
 ) -> PolicyReport:
     evaluation = evaluate_policy(
         result,
@@ -138,6 +174,7 @@ def build_policy_report(
             class_results.extend(
                 stress_result.class_results
             )
+
             continue
 
         class_results.extend(
@@ -152,6 +189,7 @@ def build_policy_report(
         class_results,
         default_policy=default_class_policy,
         class_policies=class_policies,
+        minimum_class_coverage=minimum_class_coverage,
     )
 
     return PolicyReport(
