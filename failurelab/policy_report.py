@@ -67,6 +67,12 @@ class PolicyReport:
             "class_violation_count": len(
                 self.class_evaluation.violations
             ),
+            "evaluated_classes": (
+                self.class_evaluation.evaluated_classes
+            ),
+            "skipped_classes": (
+                self.class_evaluation.skipped_classes
+            ),
             "violations": [
                 {
                     "stress_name": violation.stress_name,
@@ -83,6 +89,7 @@ class PolicyReport:
                     "metric": violation.metric,
                     "observed": violation.observed,
                     "allowed": violation.allowed,
+                    "sample_count": violation.sample_count,
                 }
                 for violation
                 in self.class_evaluation.violations

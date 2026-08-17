@@ -33,6 +33,46 @@ def _optional_float(
     return value
 
 
+def _minimum_samples(
+    data: dict,
+) -> int:
+    value = data.get(
+        "minimum_samples",
+        1,
+    )
+
+    if isinstance(value, bool):
+        raise ValueError(
+            "class policy field 'minimum_samples' "
+            "must be an integer."
+        )
+
+    try:
+        converted = int(value)
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValueError(
+            "class policy field 'minimum_samples' "
+            "must be an integer."
+        ) from exc
+
+    if converted != value:
+        raise ValueError(
+            "class policy field 'minimum_samples' "
+            "must be an integer."
+        )
+
+    if converted < 1:
+        raise ValueError(
+            "class policy field 'minimum_samples' "
+            "must be at least 1."
+        )
+
+    return converted
+
+
 def _build_policy(
     data: dict,
 ) -> ClassPolicy:
@@ -52,6 +92,9 @@ def _build_policy(
         maximum_flip_rate=_optional_float(
             data,
             "maximum_flip_rate",
+        ),
+        minimum_samples=_minimum_samples(
+            data
         ),
     )
 

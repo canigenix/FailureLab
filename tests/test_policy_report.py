@@ -55,7 +55,9 @@ def build_result():
     )
 
     return runner.run(
-        dataset=[(image, 0)],
+        dataset=[
+            (image, 0),
+        ],
         config=config,
     )
 
@@ -101,7 +103,9 @@ def test_policy_report_detects_global_failure():
     assert not report.passed
     assert report.status == "failed"
     assert report.policy_status == "failed"
-    assert len(report.evaluation.violations) >= 1
+    assert len(
+        report.evaluation.violations
+    ) >= 1
 
 
 def test_policy_report_detects_class_failure():
@@ -124,12 +128,36 @@ def test_policy_report_detects_class_failure():
     assert not report.passed
     assert report.status == "failed"
     assert report.class_policy_status == "failed"
+
     assert (
         len(
             report.class_evaluation.violations
         )
         >= 1
     )
+
+
+def test_policy_report_tracks_skipped_classes():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        maximum_top1_drop=1.0,
+        maximum_top5_drop=1.0,
+        maximum_confidence_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+        default_class_policy=ClassPolicy(
+            maximum_failure_rate=0.01,
+            minimum_samples=2,
+        ),
+    )
+
+    assert report.class_evaluation.evaluated_classes == 0
+    assert report.class_evaluation.skipped_classes == 1
+    assert report.class_policy_status == "passed"
 
 
 def test_policy_report_saves_json(tmp_path):
@@ -149,7 +177,9 @@ def test_policy_report_saves_json(tmp_path):
 
     path = tmp_path / "policy-report.json"
 
-    report.save_json(path)
+    report.save_json(
+        path
+    )
 
     assert path.exists()
 
@@ -163,5 +193,14 @@ def test_policy_report_saves_json(tmp_path):
     assert data["status"] == "failed"
     assert data["policy_status"] == "failed"
     assert data["class_policy_status"] == "failed"
+
     assert data["violation_count"] >= 1
     assert data["class_violation_count"] >= 1
+
+    assert "evaluated_classes" in data
+    assert "skipped_classes" in data
+
+    assert (
+        data["class_violations"][0]["sample_count"]
+        == 1
+    )

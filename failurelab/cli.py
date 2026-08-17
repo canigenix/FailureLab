@@ -675,6 +675,16 @@ def run_policy_evaluate(
             f"{report.class_policy_status}"
         )
 
+        print(
+            f"Classes evaluated: "
+            f"{report.class_evaluation.evaluated_classes}"
+        )
+
+        print(
+            f"Classes skipped: "
+            f"{report.class_evaluation.skipped_classes}"
+        )
+
     for violation in report.evaluation.violations:
         print(
             f"- {violation.stress_name}: "

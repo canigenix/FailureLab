@@ -29,9 +29,7 @@ def test_load_class_policy(tmp_path):
     )
 
     default_policy, class_policies = (
-        load_class_policy(
-            path
-        )
+        load_class_policy(path)
     )
 
     assert (
@@ -110,4 +108,59 @@ def test_load_class_policy_rejects_negative_limit(
     else:
         raise AssertionError(
             "Expected negative class policy limit to fail."
+        )
+
+
+def test_load_class_policy_supports_minimum_samples(
+    tmp_path,
+):
+    path = tmp_path / "class-policy.json"
+
+    path.write_text(
+        json.dumps(
+            {
+                "default": {
+                    "minimum_samples": 25
+                },
+                "classes": {
+                    "0": {
+                        "minimum_samples": 100
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    default_policy, class_policies = (
+        load_class_policy(path)
+    )
+
+    assert default_policy.minimum_samples == 25
+    assert class_policies[0].minimum_samples == 100
+
+
+def test_load_class_policy_rejects_invalid_minimum_samples(
+    tmp_path,
+):
+    path = tmp_path / "class-policy.json"
+
+    path.write_text(
+        json.dumps(
+            {
+                "default": {
+                    "minimum_samples": 0
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    try:
+        load_class_policy(path)
+    except ValueError as exc:
+        assert "must be at least 1" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected invalid minimum_samples to fail."
         )

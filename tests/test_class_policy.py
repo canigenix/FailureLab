@@ -105,3 +105,36 @@ def test_class_policy_supports_class_specific_limits():
         == "prediction_flip_rate"
         for violation in evaluation.violations
     )
+
+
+def test_class_policy_skips_under_sampled_classes():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            maximum_failure_rate=0.01,
+            minimum_samples=3,
+        ),
+    )
+
+    assert evaluation.passed
+    assert evaluation.evaluated_classes == 0
+    assert evaluation.skipped_classes == 2
+    assert evaluation.violations == []
+
+
+def test_class_policy_evaluates_classes_with_enough_samples():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            maximum_failure_rate=0.01,
+            minimum_samples=2,
+        ),
+    )
+
+    assert not evaluation.passed
+    assert evaluation.evaluated_classes == 2
+    assert evaluation.skipped_classes == 0
