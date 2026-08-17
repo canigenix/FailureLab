@@ -1,3 +1,34 @@
+## [0.4.0] - 2026-08-16
+
+### Added
+
+- Configurable robustness policy engine.
+- Global and stress-specific policy thresholds.
+- Warning and failure severity levels.
+- JSON-based robustness policy configuration.
+- Class-level robustness policy gates.
+- Class-specific warning and failure thresholds.
+- Minimum sample requirements for class evaluation.
+- Class coverage enforcement.
+- Policy evaluation reports with warnings, violations, and coverage metadata.
+- `policy-evaluate` CLI workflow.
+- CI-friendly policy exit codes.
+
+### Improved
+
+- Suite result persistence now includes class robustness summaries.
+- Policy reports distinguish warnings from hard failures.
+- Class policy evaluation tracks evaluated and skipped classes.
+- Coverage requirements prevent misleading passes when evidence is insufficient.
+- Public Python API expanded for policy and reporting workflows.
+
+### Validation
+
+- Full automated test suite passing.
+- v0.4.0 wheel and source distribution built successfully.
+- Clean isolated wheel installation verified.
+- Installed CLI and public API verified.
+
 ## [0.3.0] - 2026-08-16
 
 ### Added

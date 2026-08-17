@@ -9,6 +9,16 @@ from failurelab.batch import (
     BatchExperimentRunner,
     BatchOutput,
 )
+from failurelab.class_policy import (
+    ClassPolicy,
+    ClassPolicyEvaluation,
+    ClassPolicyViolation,
+    evaluate_class_policy,
+)
+from failurelab.class_policy_config import (
+    LoadedClassPolicy,
+    load_class_policy,
+)
 from failurelab.comparison import (
     BoundaryComparison,
     ModelComparison,
@@ -34,8 +44,23 @@ from failurelab.history import (
     HistoryEntry,
     SuiteHistory,
 )
+from failurelab.policy_config import (
+    load_robustness_policy,
+)
+from failurelab.policy_report import (
+    PolicyReport,
+    build_policy_report,
+)
+from failurelab.robustness_policy import (
+    PolicyEvaluation,
+    PolicyViolation,
+    RobustnessPolicy,
+    StressPolicy,
+    evaluate_policy,
+)
 from failurelab.suite_runner import (
     ConfiguredSuiteRunner,
+    SavedStressResult,
     SuiteResult,
 )
 
@@ -55,6 +80,7 @@ __all__ = [
     "load_suite_config",
     "ConfiguredSuiteRunner",
     "SuiteResult",
+    "SavedStressResult",
     "ExperimentRunner",
     "ExperimentOutput",
     "SuiteHistory",
@@ -62,6 +88,20 @@ __all__ = [
     "BatchExperiment",
     "BatchExperimentRunner",
     "BatchOutput",
+    "StressPolicy",
+    "RobustnessPolicy",
+    "PolicyViolation",
+    "PolicyEvaluation",
+    "evaluate_policy",
+    "load_robustness_policy",
+    "ClassPolicy",
+    "ClassPolicyViolation",
+    "ClassPolicyEvaluation",
+    "evaluate_class_policy",
+    "LoadedClassPolicy",
+    "load_class_policy",
+    "PolicyReport",
+    "build_policy_report",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

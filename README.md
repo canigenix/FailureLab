@@ -10,14 +10,14 @@ Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Version](https://img.shields.io/badge/version-0.4.0-green)](https://github.com/canigenix/FailureLab/releases)
 [![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
 
 ---
 
-## FailureLab v0.3.0
+## FailureLab v0.4.0
 
-Version 0.3.0 adds configuration-driven robustness workflows and experiment tracking.
+Version 0.4.0 adds configuration-driven robustness workflows and experiment tracking.
 
 Highlights:
 
@@ -32,6 +32,15 @@ Highlights:
 - Batch JSON summaries
 - `suite` and `history` CLI workflows
 - Expanded public Python API
+  Configurable global robustness policies
+  Stress-specific policy thresholds
+  Warning vs failure severity levels
+  Class-level robustness policies
+  Class-specific warning/failure thresholds
+  Minimum sample requirements
+  Class coverage enforcement
+  Policy evaluation CLI
+  CI-friendly exit codes
 
 These features build on the failure analysis, custom stress tests, visualization, model comparison, and CI regression gates introduced in earlier releases.
 
@@ -99,7 +108,7 @@ failurelab --version
 Expected:
 
 ```text
-failurelab 0.3.0
+failurelab 0.4.0
 ```
 
 ---
@@ -157,7 +166,7 @@ These can be evaluated individually or through configured suites and severity sw
 
 ## Configured Stress Suites
 
-v0.3.0 introduces reusable stress-suite configurations.
+v0.4.0 introduces reusable stress-suite configurations.
 
 Example:
 
@@ -552,7 +561,7 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-FailureLab v0.3.0 currently passes:
+FailureLab v0.4.0 currently passes:
 
 ```text
 116 automated tests
@@ -577,11 +586,11 @@ Artifacts are generated under:
 dist/
 ```
 
-For v0.3.0:
+For v0.4.0:
 
 ```text
-failurelab-0.3.0-py3-none-any.whl
-failurelab-0.3.0.tar.gz
+failurelab-0.4.0-py3-none-any.whl
+failurelab-0.4.0.tar.gz
 ```
 
 ---
@@ -616,10 +625,10 @@ FailureLab is under active development.
 Current version:
 
 ```text
-0.3.0
+0.4.0
 ```
 
-v0.3.0 includes configuration-driven stress suites, experiment tracking, model/run metadata, robustness history, trend detection, batch execution, visualization, model comparison, and CI-compatible regression gates.
+v0.4.0 includes configuration-driven stress suites, experiment tracking, model/run metadata, robustness history, trend detection, batch execution, visualization, model comparison, and CI-compatible regression gates.
 
 ---
 
