@@ -280,3 +280,31 @@ def test_policy_report_exports_class_coverage():
     assert data["class_coverage"] == 1.0
     assert data["minimum_class_coverage"] == 0.80
     assert data["coverage_passed"]
+
+
+def test_policy_report_preserves_class_warning_status():
+    result = build_result()
+
+    policy = RobustnessPolicy(
+        maximum_top1_drop=1.0,
+    )
+
+    report = build_policy_report(
+        result,
+        policy,
+        default_class_policy=ClassPolicy(
+            warning_failure_rate=0.01,
+            maximum_failure_rate=1.0,
+        ),
+    )
+
+    assert report.passed
+    assert report.has_warnings
+    assert report.status == "warning"
+    assert report.class_policy_status == "warning"
+
+    data = report.to_dict()
+
+    assert data["class_warning_count"] >= 1
+    assert len(data["class_warnings"]) >= 1
+    assert data["class_warnings"][0]["severity"] == "warning"

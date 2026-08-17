@@ -14,9 +14,6 @@ class LoadedClassPolicy:
     minimum_class_coverage: float | None = None
 
     def __iter__(self):
-        # Keeps existing code compatible:
-        #
-        # default_policy, class_policies = load_class_policy(...)
         yield self.default_policy
         yield self.class_policies
 
@@ -140,6 +137,22 @@ def _build_policy(
         maximum_flip_rate=_optional_float(
             data,
             "maximum_flip_rate",
+        ),
+        warning_accuracy_drop=_optional_float(
+            data,
+            "warning_accuracy_drop",
+        ),
+        warning_confidence_drop=_optional_float(
+            data,
+            "warning_confidence_drop",
+        ),
+        warning_failure_rate=_optional_float(
+            data,
+            "warning_failure_rate",
+        ),
+        warning_flip_rate=_optional_float(
+            data,
+            "warning_flip_rate",
         ),
         minimum_samples=_minimum_samples(
             data

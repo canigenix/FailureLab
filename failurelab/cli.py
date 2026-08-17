@@ -723,6 +723,14 @@ def run_policy_evaluate(
             f"> {warning.allowed:.2%}"
         )
 
+    for warning in report.class_evaluation.warnings:
+        print(
+            f"- WARNING class {warning.class_index}: "
+            f"{warning.metric} "
+            f"{warning.observed:.2%} "
+            f"> {warning.allowed:.2%}"
+        )
+
     for violation in report.class_evaluation.violations:
         print(
             f"- class {violation.class_index}: "

@@ -80,6 +80,7 @@ def test_class_policy_passes_when_within_limits():
     assert evaluation.passed
     assert evaluation.status == "passed"
     assert evaluation.violations == []
+    assert evaluation.warnings == []
 
 
 def test_class_policy_supports_class_specific_limits():
@@ -205,4 +206,64 @@ def test_class_policy_rejects_invalid_coverage():
     else:
         raise AssertionError(
             "Expected invalid coverage threshold to fail."
+        )
+
+
+def test_class_policy_reports_warning_without_failure():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            warning_failure_rate=0.25,
+            maximum_failure_rate=1.0,
+        ),
+    )
+
+    assert evaluation.passed
+    assert evaluation.status == "warning"
+    assert evaluation.violations == []
+    assert len(evaluation.warnings) >= 1
+
+    assert (
+        evaluation.warnings[0].severity
+        == "warning"
+    )
+
+
+def test_class_policy_failure_takes_priority_over_warning():
+    results = build_results()
+
+    evaluation = evaluate_class_policy(
+        results,
+        default_policy=ClassPolicy(
+            warning_failure_rate=0.10,
+            maximum_failure_rate=0.25,
+        ),
+    )
+
+    assert not evaluation.passed
+    assert evaluation.status == "failed"
+    assert len(evaluation.violations) >= 1
+
+
+def test_class_policy_rejects_warning_above_maximum():
+    results = build_results()
+
+    try:
+        evaluate_class_policy(
+            results,
+            default_policy=ClassPolicy(
+                warning_failure_rate=0.50,
+                maximum_failure_rate=0.25,
+            ),
+        )
+    except ValueError as exc:
+        assert (
+            "warning threshold cannot exceed"
+            in str(exc)
+        )
+    else:
+        raise AssertionError(
+            "Expected invalid class warning threshold to fail."
         )

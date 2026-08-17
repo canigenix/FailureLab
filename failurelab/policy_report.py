@@ -46,6 +46,7 @@ class PolicyReport:
     def has_warnings(self) -> bool:
         return bool(
             self.evaluation.warnings
+            or self.class_evaluation.warnings
         )
 
     @property
@@ -75,6 +76,9 @@ class PolicyReport:
             "warning_count": len(
                 self.evaluation.warnings
             ),
+            "class_warning_count": len(
+    self.class_evaluation.warnings
+),
             "class_violation_count": len(
                 self.class_evaluation.violations
             ),
@@ -109,6 +113,18 @@ class PolicyReport:
             ],
             "warnings": [
                 {
+                    "class_warnings": [
+    {
+        "class_index": warning.class_index,
+        "metric": warning.metric,
+        "observed": warning.observed,
+        "allowed": warning.allowed,
+        "sample_count": warning.sample_count,
+        "severity": warning.severity,
+    }
+    for warning
+    in self.class_evaluation.warnings
+],
                     "stress_name": warning.stress_name,
                     "metric": warning.metric,
                     "observed": warning.observed,
@@ -118,6 +134,19 @@ class PolicyReport:
                 for warning
                 in self.evaluation.warnings
             ],
+
+            "class_warnings": [
+    {
+        "class_index": warning.class_index,
+        "metric": warning.metric,
+        "observed": warning.observed,
+        "allowed": warning.allowed,
+        "sample_count": warning.sample_count,
+        "severity": warning.severity,
+    }
+    for warning
+    in self.class_evaluation.warnings
+],
             "class_violations": [
                 {
                     "class_index": violation.class_index,

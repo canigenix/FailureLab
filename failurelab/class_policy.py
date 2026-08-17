@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from failurelab.class_analysis import ClassRobustnessResult
 
@@ -11,6 +11,12 @@ class ClassPolicy:
     maximum_confidence_drop: float | None = None
     maximum_failure_rate: float | None = None
     maximum_flip_rate: float | None = None
+
+    warning_accuracy_drop: float | None = None
+    warning_confidence_drop: float | None = None
+    warning_failure_rate: float | None = None
+    warning_flip_rate: float | None = None
+
     minimum_samples: int = 1
 
 
@@ -21,6 +27,7 @@ class ClassPolicyViolation:
     observed: float
     allowed: float
     sample_count: int
+    severity: str = "failure"
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,9 @@ class ClassPolicyEvaluation:
     evaluated_classes: int
     skipped_classes: int
     minimum_class_coverage: float | None = None
+    warnings: list[ClassPolicyViolation] = field(
+        default_factory=list
+    )
 
     @property
     def total_classes(self) -> int:
@@ -66,11 +76,13 @@ class ClassPolicyEvaluation:
 
     @property
     def status(self) -> str:
-        return (
-            "passed"
-            if self.passed
-            else "failed"
-        )
+        if not self.passed:
+            return "failed"
+
+        if self.warnings:
+            return "warning"
+
+        return "passed"
 
 
 def _validate_policy(
@@ -95,30 +107,65 @@ def _validate_coverage(
         )
 
 
-def _check_limit(
+def _check_metric(
     violations: list[ClassPolicyViolation],
+    warnings: list[ClassPolicyViolation],
     class_index: int,
     sample_count: int,
     metric: str,
     observed: float,
-    allowed: float | None,
+    maximum: float | None,
+    warning: float | None,
 ) -> None:
-    if allowed is None:
-        return
-
-    if allowed < 0:
+    if maximum is not None and maximum < 0:
         raise ValueError(
             f"{metric} limit cannot be negative."
         )
 
-    if observed > allowed:
+    if warning is not None and warning < 0:
+        raise ValueError(
+            f"{metric} warning limit cannot be negative."
+        )
+
+    if (
+        maximum is not None
+        and warning is not None
+        and warning > maximum
+    ):
+        raise ValueError(
+            f"{metric} warning threshold cannot "
+            "exceed its maximum threshold."
+        )
+
+    if (
+        maximum is not None
+        and observed > maximum
+    ):
         violations.append(
             ClassPolicyViolation(
                 class_index=class_index,
                 metric=metric,
                 observed=observed,
-                allowed=allowed,
+                allowed=maximum,
                 sample_count=sample_count,
+                severity="failure",
+            )
+        )
+
+        return
+
+    if (
+        warning is not None
+        and observed > warning
+    ):
+        warnings.append(
+            ClassPolicyViolation(
+                class_index=class_index,
+                metric=metric,
+                observed=observed,
+                allowed=warning,
+                sample_count=sample_count,
+                severity="warning",
             )
         )
 
@@ -149,6 +196,7 @@ def evaluate_class_policy(
     )
 
     violations: list[ClassPolicyViolation] = []
+    warnings: list[ClassPolicyViolation] = []
 
     evaluated_classes = 0
     skipped_classes = 0
@@ -180,44 +228,53 @@ def evaluate_class_policy(
             )
 
         for policy in policies:
-            _check_limit(
+            _check_metric(
                 violations,
+                warnings,
                 result.class_index,
                 result.sample_count,
                 "accuracy_drop",
                 result.accuracy_drop,
                 policy.maximum_accuracy_drop,
+                policy.warning_accuracy_drop,
             )
 
-            _check_limit(
+            _check_metric(
                 violations,
+                warnings,
                 result.class_index,
                 result.sample_count,
                 "confidence_drop",
                 result.confidence_drop,
                 policy.maximum_confidence_drop,
+                policy.warning_confidence_drop,
             )
 
-            _check_limit(
+            _check_metric(
                 violations,
+                warnings,
                 result.class_index,
                 result.sample_count,
                 "stressed_failure_rate",
                 result.stressed_failure_rate,
                 policy.maximum_failure_rate,
+                policy.warning_failure_rate,
             )
 
-            _check_limit(
+            _check_metric(
                 violations,
+                warnings,
                 result.class_index,
                 result.sample_count,
                 "prediction_flip_rate",
                 result.prediction_flip_rate,
                 policy.maximum_flip_rate,
+                policy.warning_flip_rate,
             )
 
     return ClassPolicyEvaluation(
         violations=violations,
+        warnings=warnings,
         evaluated_classes=evaluated_classes,
         skipped_classes=skipped_classes,
         minimum_class_coverage=minimum_class_coverage,
