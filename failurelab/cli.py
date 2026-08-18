@@ -1,6 +1,15 @@
 import argparse
 import json
 import sys
+from failurelab.sample_policy import (
+    evaluate_sample_failure_policy,
+)
+from failurelab.sample_policy_config import (
+    load_sample_failure_policy,
+)
+from failurelab.sample_report import (
+    SampleFailureReport,
+)
 from pathlib import Path
 from failurelab.class_policy_config import load_class_policy
 from failurelab.cross_stress_policy import (
@@ -220,6 +229,28 @@ def build_parser():
             "Optional path for the cross-stress "
             "JSON report."
         ),
+    )
+
+    sample_report_parser = subparsers.add_parser(
+        "sample-report",
+        help=(
+            "Inspect a saved sample failure report "
+            "and optionally enforce a policy."
+        ),
+    )
+
+    sample_report_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="Saved sample failure report JSON file.",
+    )
+
+    sample_report_parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help="Optional sample failure policy JSON file.",
     )
 
     return parser
@@ -898,6 +929,81 @@ def run_cross_stress(
 
     return 0
 
+def run_sample_report(
+    input_path: Path,
+    policy_path: Path | None = None,
+) -> int:
+    report = SampleFailureReport.load_json(
+        input_path
+    )
+
+    print(
+        f"Suite: {report.suite_name}"
+    )
+
+    print(
+        f"Samples analyzed: {report.sample_count}"
+    )
+
+    print(
+        f"Systemic: {report.systemic_count}"
+    )
+
+    print(
+        f"Localized: {report.localized_count}"
+    )
+
+    print(
+        f"Stable: {report.stable_count}"
+    )
+
+    for row in report.samples:
+        print(
+            f"- sample {row.sample_index}: "
+            f"{row.severity} "
+            f"(failure frequency "
+            f"{row.failure_frequency:.2%})"
+        )
+
+    if policy_path is None:
+        return 0
+
+    policy = load_sample_failure_policy(
+        policy_path
+    )
+
+    evaluation = evaluate_sample_failure_policy(
+        report,
+        policy,
+    )
+
+    for violation in evaluation.violations:
+        if violation.metric == "systemic_fraction":
+            observed = f"{violation.observed:.2%}"
+            allowed = f"{violation.allowed:.2%}"
+        else:
+            observed = f"{violation.observed:g}"
+            allowed = f"{violation.allowed:g}"
+
+        print(
+            f"- {violation.metric}: "
+            f"{observed} > {allowed}"
+        )
+
+    print()
+
+    if not evaluation.passed:
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -941,11 +1047,22 @@ def main():
             )
 
         if args.command == "cross-stress":
+            
             return run_cross_stress(
                 result_path=args.result,
                 policy_path=args.policy,
                 output_path=args.output,
             )
+
+        if args.command == "sample-report":
+            return run_sample_report(
+                input_path=args.input,
+                policy_path=args.policy,
+            )
+
+        
+        
+        
 
     except (
         FileNotFoundError,
