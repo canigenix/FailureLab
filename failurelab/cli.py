@@ -1,6 +1,15 @@
 import argparse
 import json
 import sys
+from failurelab.failure_correlation_policy import (
+    evaluate_failure_correlation_policy,
+)
+from failurelab.failure_correlation_policy_config import (
+    load_failure_correlation_policy,
+)
+from failurelab.failure_correlation_report import (
+    build_failure_correlation_report,
+)
 from failurelab.sample_policy import (
     evaluate_sample_failure_policy,
 )
@@ -251,6 +260,34 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional sample failure policy JSON file.",
+    )
+
+    correlation_parser = subparsers.add_parser(
+        "correlation",
+        help=(
+            "Analyze failure correlation between stresses."
+        ),
+    )
+
+    correlation_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="Saved sample failure report JSON file.",
+    )
+
+    correlation_parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help="Optional failure correlation policy JSON file.",
+    )
+
+    correlation_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for correlation JSON.",
     )
 
     return parser
@@ -1004,6 +1041,94 @@ def run_sample_report(
 
     return 0
 
+def run_correlation(
+    input_path: Path,
+    policy_path: Path | None = None,
+    output_path: Path | None = None,
+) -> int:
+    report = SampleFailureReport.load_json(
+        input_path
+    )
+
+    correlation_report = (
+        build_failure_correlation_report(
+            report
+        )
+    )
+
+    print(
+        f"Suite: {correlation_report.suite_name}"
+    )
+
+    print(
+        f"Stress pairs: {correlation_report.pair_count}"
+    )
+
+    strongest = correlation_report.strongest_pair
+
+    if strongest is not None:
+        print(
+            f"Strongest pair: "
+            f"{strongest.stress_a} + "
+            f"{strongest.stress_b} "
+            f"({strongest.correlation:.2%})"
+        )
+
+    for row in correlation_report.correlations:
+        print(
+            f"- {row.stress_a} + {row.stress_b}: "
+            f"{row.correlation:.2%} "
+            f"({row.shared_failures} shared failures)"
+        )
+
+    if output_path is not None:
+        correlation_report.save_json(
+            output_path
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy_path is None:
+        return 0
+
+    policy = load_failure_correlation_policy(
+        policy_path
+    )
+
+    evaluation = evaluate_failure_correlation_policy(
+        correlation_report,
+        policy,
+    )
+
+    for violation in evaluation.violations:
+        if violation.metric == "maximum_correlation":
+            observed = f"{violation.observed:.2%}"
+            allowed = f"{violation.allowed:.2%}"
+        else:
+            observed = f"{violation.observed:g}"
+            allowed = f"{violation.allowed:g}"
+
+        print(
+            f"- {violation.metric}: "
+            f"{observed} > {allowed}"
+        )
+
+    print()
+
+    if not evaluation.passed:
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -1058,7 +1183,17 @@ def main():
             return run_sample_report(
                 input_path=args.input,
                 policy_path=args.policy,
+
             )
+
+        if args.command == "correlation":
+            return run_correlation(
+                input_path=args.input,
+                policy_path=args.policy,
+                output_path=args.output,
+            )
+
+        
 
         
         

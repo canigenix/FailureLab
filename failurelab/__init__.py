@@ -101,6 +101,26 @@ from failurelab.sample_policy_config import (
     load_sample_failure_policy,
 )
 
+from failurelab.failure_correlation import (
+    StressCorrelationResult,
+    analyze_failure_correlations,
+    analyze_report_correlations,
+    calculate_failure_correlation,
+)
+from failurelab.failure_correlation_report import (
+    FailureCorrelationReport,
+    build_failure_correlation_report,
+)
+from failurelab.failure_correlation_policy import (
+    FailureCorrelationPolicy,
+    FailureCorrelationPolicyEvaluation,
+    FailureCorrelationPolicyViolation,
+    evaluate_failure_correlation_policy,
+)
+from failurelab.failure_correlation_policy_config import (
+    load_failure_correlation_policy,
+)
+
 __all__ = [
     "FailureLab",
     "FailureLabReport",
@@ -160,6 +180,17 @@ __all__ = [
     "SampleFailurePolicyViolation",
     "evaluate_sample_failure_policy",
     "load_sample_failure_policy",
+        "StressCorrelationResult",
+    "analyze_failure_correlations",
+    "analyze_report_correlations",
+    "calculate_failure_correlation",
+    "FailureCorrelationReport",
+    "build_failure_correlation_report",
+    "FailureCorrelationPolicy",
+    "FailureCorrelationPolicyEvaluation",
+    "FailureCorrelationPolicyViolation",
+    "evaluate_failure_correlation_policy",
+    "load_failure_correlation_policy",
 ]
 
 __version__ = "0.4.0"
