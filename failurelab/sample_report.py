@@ -91,6 +91,85 @@ class SampleFailureReport:
             encoding="utf-8",
         )
 
+    @classmethod
+    def load_json(
+        cls,
+        path: str | Path,
+    ) -> "SampleFailureReport":
+        path = Path(path)
+
+        data = json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        if not isinstance(data, dict):
+            raise ValueError(
+                "sample failure report must be a JSON object."
+            )
+
+        raw_samples = data.get(
+            "samples",
+            [],
+        )
+
+        if not isinstance(
+            raw_samples,
+            list,
+        ):
+            raise ValueError(
+                "sample failure report 'samples' must be a list."
+            )
+
+        samples = []
+
+        for row in raw_samples:
+            samples.append(
+                SampleFailureResult(
+                    sample_index=int(
+                        row["sample_index"]
+                    ),
+                    target=int(
+                        row["target"]
+                    ),
+                    stress_count=int(
+                        row["stress_count"]
+                    ),
+                    failure_stress_count=int(
+                        row["failure_stress_count"]
+                    ),
+                    failure_frequency=float(
+                        row["failure_frequency"]
+                    ),
+                    flip_stress_count=int(
+                        row["flip_stress_count"]
+                    ),
+                    flip_frequency=float(
+                        row["flip_frequency"]
+                    ),
+                    failed_stresses=list(
+                        row["failed_stresses"]
+                    ),
+                    flipped_stresses=list(
+                        row["flipped_stresses"]
+                    ),
+                    severity=str(
+                        row["severity"]
+                    ),
+                )
+            )
+
+        return cls(
+            suite_name=str(
+                data.get(
+                    "suite_name",
+                    "default",
+                )
+            ),
+            samples=samples,
+        )
+
 
 def build_sample_failure_report(
     result: SuiteResult,
