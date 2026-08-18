@@ -82,6 +82,24 @@ from failurelab.cross_stress_policy import (
 from failurelab.cross_stress_policy_config import (
     load_cross_stress_policy,
 )
+from failurelab.sample_analysis import (
+    SampleFailureResult,
+    analyze_sample_failures,
+    classify_sample_failure_severity,
+)
+from failurelab.sample_report import (
+    SampleFailureReport,
+    build_sample_failure_report,
+)
+from failurelab.sample_policy import (
+    SampleFailurePolicy,
+    SampleFailurePolicyEvaluation,
+    SampleFailurePolicyViolation,
+    evaluate_sample_failure_policy,
+)
+from failurelab.sample_policy_config import (
+    load_sample_failure_policy,
+)
 
 __all__ = [
     "FailureLab",
@@ -132,6 +150,16 @@ __all__ = [
     "CrossStressPolicyViolation",
     "evaluate_cross_stress_policy",
     "load_cross_stress_policy",
+        "SampleFailureResult",
+    "analyze_sample_failures",
+    "classify_sample_failure_severity",
+    "SampleFailureReport",
+    "build_sample_failure_report",
+    "SampleFailurePolicy",
+    "SampleFailurePolicyEvaluation",
+    "SampleFailurePolicyViolation",
+    "evaluate_sample_failure_policy",
+    "load_sample_failure_policy",
 ]
 
 __version__ = "0.4.0"
