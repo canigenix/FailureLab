@@ -1,6 +1,15 @@
 import argparse
 import json
 import sys
+from failurelab.failure_cluster_policy import (
+    evaluate_failure_cluster_policy,
+)
+from failurelab.failure_cluster_policy_config import (
+    load_failure_cluster_policy,
+)
+from failurelab.failure_cluster_report import (
+    build_failure_cluster_report,
+)
 from failurelab.failure_correlation_policy import (
     evaluate_failure_correlation_policy,
 )
@@ -52,7 +61,7 @@ try:
 except ImportError:  # pragma: no cover
     __version__ = "0.0.0"
 
-
+    
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="failurelab",
@@ -290,7 +299,68 @@ def build_parser():
         help="Optional output path for correlation JSON.",
     )
 
+    cluster_parser = subparsers.add_parser(
+        "clusters",
+        help="Analyze correlated failure clusters.",
+    )
+
+    cluster_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="Saved sample failure report JSON file.",
+    )
+
+    cluster_parser.add_argument(
+        "--minimum-correlation",
+        type=float,
+        default=0.75,
+        help="Minimum correlation used to form clusters.",
+    )
+
+    cluster_parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help="Optional failure cluster policy JSON file.",
+    )
+
+    cluster_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for cluster JSON.",
+    )
+
     return parser
+
+    cluster_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="Saved sample failure report JSON file.",
+    )
+
+    cluster_parser.add_argument(
+        "--minimum-correlation",
+        type=float,
+        default=0.75,
+        help="Minimum correlation used to form clusters.",
+    )
+
+    cluster_parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help="Optional failure cluster policy JSON file.",
+    )
+
+    cluster_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for cluster JSON.",
+    )
     
 
     
@@ -1129,6 +1199,90 @@ def run_correlation(
 
     return 0
 
+def run_clusters(
+    input_path: Path,
+    minimum_correlation: float = 0.75,
+    policy_path: Path | None = None,
+    output_path: Path | None = None,
+) -> int:
+    sample_report = SampleFailureReport.load_json(
+        input_path
+    )
+
+    correlation_report = (
+        build_failure_correlation_report(
+            sample_report
+        )
+    )
+
+    cluster_report = build_failure_cluster_report(
+        correlation_report,
+        minimum_correlation=minimum_correlation,
+    )
+
+    print(
+        f"Suite: {cluster_report.suite_name}"
+    )
+
+    print(
+        f"Clusters: {cluster_report.cluster_count}"
+    )
+
+    largest = cluster_report.largest_cluster
+
+    if largest is not None:
+        print(
+            f"Largest cluster: "
+            f"{len(largest.stresses)} stresses"
+        )
+
+    for index, cluster in enumerate(
+        cluster_report.clusters,
+        start=1,
+    ):
+        print(
+            f"- cluster {index}: "
+            f"{', '.join(cluster.stresses)} "
+            f"({cluster.mean_correlation:.2%})"
+        )
+
+    if output_path is not None:
+        cluster_report.save_json(
+            output_path
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy_path is None:
+        return 0
+
+    policy = load_failure_cluster_policy(
+        policy_path
+    )
+
+    evaluation = evaluate_failure_cluster_policy(
+        cluster_report,
+        policy,
+    )
+
+    for violation in evaluation.violations:
+        print(
+            f"- {violation.metric}: "
+            f"{violation.observed:g} > "
+            f"{violation.allowed:g}"
+        )
+
+    print()
+
+    if not evaluation.passed:
+        print("RESULT: FAILED")
+        return 1
+
+    print("RESULT: PASSED")
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -1189,6 +1343,16 @@ def main():
         if args.command == "correlation":
             return run_correlation(
                 input_path=args.input,
+                policy_path=args.policy,
+                output_path=args.output,
+            )
+
+        if args.command == "clusters":
+            return run_clusters(
+                input_path=args.input,
+                minimum_correlation=(
+                    args.minimum_correlation
+                ),
                 policy_path=args.policy,
                 output_path=args.output,
             )

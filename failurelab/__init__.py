@@ -4,6 +4,24 @@ from failurelab.api import (
     FailureLab,
     FailureLabReport,
 )
+from failurelab.failure_clusters import (
+    FailureCluster,
+    build_failure_clusters,
+    build_report_clusters,
+)
+from failurelab.failure_cluster_report import (
+    FailureClusterReport,
+    build_failure_cluster_report,
+)
+from failurelab.failure_cluster_policy import (
+    FailureClusterPolicy,
+    FailureClusterPolicyEvaluation,
+    FailureClusterPolicyViolation,
+    evaluate_failure_cluster_policy,
+)
+from failurelab.failure_cluster_policy_config import (
+    load_failure_cluster_policy,
+)
 from failurelab.batch import (
     BatchExperiment,
     BatchExperimentRunner,
@@ -191,6 +209,16 @@ __all__ = [
     "FailureCorrelationPolicyViolation",
     "evaluate_failure_correlation_policy",
     "load_failure_correlation_policy",
+        "FailureCluster",
+    "build_failure_clusters",
+    "build_report_clusters",
+    "FailureClusterReport",
+    "build_failure_cluster_report",
+    "FailureClusterPolicy",
+    "FailureClusterPolicyEvaluation",
+    "FailureClusterPolicyViolation",
+    "evaluate_failure_cluster_policy",
+    "load_failure_cluster_policy",
 ]
 
 __version__ = "0.4.0"
