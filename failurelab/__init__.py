@@ -64,6 +64,25 @@ from failurelab.suite_runner import (
     SuiteResult,
 )
 
+from failurelab.cross_stress import (
+    CrossStressClassResult,
+    analyze_cross_stress_classes,
+    classify_cross_stress_severity,
+)
+from failurelab.cross_stress_report import (
+    CrossStressReport,
+    build_cross_stress_report,
+)
+from failurelab.cross_stress_policy import (
+    CrossStressPolicy,
+    CrossStressPolicyEvaluation,
+    CrossStressPolicyViolation,
+    evaluate_cross_stress_policy,
+)
+from failurelab.cross_stress_policy_config import (
+    load_cross_stress_policy,
+)
+
 __all__ = [
     "FailureLab",
     "FailureLabReport",
@@ -102,6 +121,17 @@ __all__ = [
     "load_class_policy",
     "PolicyReport",
     "build_policy_report",
+
+        "CrossStressClassResult",
+    "analyze_cross_stress_classes",
+    "classify_cross_stress_severity",
+    "CrossStressReport",
+    "build_cross_stress_report",
+    "CrossStressPolicy",
+    "CrossStressPolicyEvaluation",
+    "CrossStressPolicyViolation",
+    "evaluate_cross_stress_policy",
+    "load_cross_stress_policy",
 ]
 
 __version__ = "0.4.0"

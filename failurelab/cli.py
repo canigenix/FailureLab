@@ -3,6 +3,15 @@ import json
 import sys
 from pathlib import Path
 from failurelab.class_policy_config import load_class_policy
+from failurelab.cross_stress_policy import (
+    evaluate_cross_stress_policy,
+)
+from failurelab.cross_stress_policy_config import (
+    load_cross_stress_policy,
+)
+from failurelab.cross_stress_report import (
+    build_cross_stress_report,
+)
 
 from failurelab.config import (
     build_stress_tests,
@@ -179,7 +188,44 @@ def build_parser():
         help="Optional class-level robustness policy JSON file.",
     )
 
+    cross_stress_parser = subparsers.add_parser(
+        "cross-stress",
+        help=(
+            "Analyze class vulnerabilities across "
+            "multiple stresses."
+        ),
+    )
+
+    cross_stress_parser.add_argument(
+        "--result",
+        type=Path,
+        required=True,
+        help="Saved FailureLab suite-result JSON file.",
+    )
+
+    cross_stress_parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help=(
+            "Optional cross-stress policy JSON file."
+        ),
+    )
+
+    cross_stress_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Optional path for the cross-stress "
+            "JSON report."
+        ),
+    )
+
     return parser
+    
+
+    
 
 
 def _load_model_snapshot(
@@ -760,6 +806,98 @@ def run_policy_evaluate(
 
     return 0
 
+def run_cross_stress(
+    result_path: Path,
+    policy_path: Path | None = None,
+    output_path: Path | None = None,
+) -> int:
+    from failurelab.suite_runner import SuiteResult
+
+    result = SuiteResult.load_json(
+        result_path
+    )
+
+    report = build_cross_stress_report(
+        result
+    )
+
+    print(
+        f"Suite: {report.suite_name}"
+    )
+
+    print(
+        f"Classes analyzed: {report.class_count}"
+    )
+
+    print(
+        f"Systemic: {report.systemic_count}"
+    )
+
+    print(
+        f"Localized: {report.localized_count}"
+    )
+
+    print(
+        f"Stable: {report.stable_count}"
+    )
+
+    for row in report.classes:
+        print(
+            f"- class {row.class_index}: "
+            f"{row.severity} "
+            f"(failure frequency "
+            f"{row.failure_frequency:.2%}, "
+            f"worst stress {row.worst_stress})"
+        )
+
+    if output_path is not None:
+        report.save_json(
+            output_path
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy_path is None:
+        return 0
+
+    policy = load_cross_stress_policy(
+        policy_path
+    )
+
+    evaluation = evaluate_cross_stress_policy(
+        report,
+        policy,
+    )
+
+    for violation in evaluation.violations:
+        if violation.metric == "systemic_fraction":
+            observed = f"{violation.observed:.2%}"
+            allowed = f"{violation.allowed:.2%}"
+        else:
+            observed = f"{violation.observed:g}"
+            allowed = f"{violation.allowed:g}"
+
+        print(
+            f"- {violation.metric}: "
+            f"{observed} > {allowed}"
+        )
+
+    print()
+
+    if not evaluation.passed:
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -800,6 +938,13 @@ def main():
                 result_path=args.result,
                 policy_path=args.policy,
                 class_policy_path=args.class_policy,
+            )
+
+        if args.command == "cross-stress":
+            return run_cross_stress(
+                result_path=args.result,
+                policy_path=args.policy,
+                output_path=args.output,
             )
 
     except (
