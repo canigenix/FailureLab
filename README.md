@@ -2,7 +2,7 @@
 
 **Find where vision models fail — before those failures reach production.**
 
-FailureLab is an open-source Python framework for stress-testing computer vision models, measuring robustness degradation, and detecting regressions between model versions.
+FailureLab is an open-source Python framework for stress-testing computer vision models, measuring robustness degradation, discovering failure patterns, and detecting regressions between model versions.
 
 Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
@@ -10,39 +10,29 @@ Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Version](https://img.shields.io/badge/version-0.5.0-green)](https://github.com/canigenix/FailureLab/releases)
 [![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
 
 ---
 
-## FailureLab v0.4.0
+## FailureLab v0.5.0
 
-Version 0.4.0 adds configuration-driven robustness workflows and experiment tracking.
+Version 0.5.0 expands FailureLab from individual robustness measurements into deeper failure-pattern analysis across classes, samples, and stress types.
 
 Highlights:
 
-- JSON-configured stress suites
-- Suite-level degradation thresholds
-- Automated PASS/FAIL evaluation
-- Persistent experiment history
-- Model and run identifiers
-- Robustness trend detection
-- Model-specific history queries
-- Batch experiment execution
-- Batch JSON summaries
-- `suite` and `history` CLI workflows
+- Cross-stress class vulnerability analysis
+- Systemic, localized, and stable vulnerability classification
+- Sample-level repeated failure tracking
+- Prediction-flip analysis across stresses
+- Stress failure correlation analysis
+- Failure clustering across related stresses
+- Policy gates for class, sample, correlation, and cluster vulnerabilities
+- JSON reports for the new analysis layers
+- CLI workflows for cross-stress, sample reports, correlation, and clusters
 - Expanded public Python API
-  Configurable global robustness policies
-  Stress-specific policy thresholds
-  Warning vs failure severity levels
-  Class-level robustness policies
-  Class-specific warning/failure thresholds
-  Minimum sample requirements
-  Class coverage enforcement
-  Policy evaluation CLI
-  CI-friendly exit codes
 
-These features build on the failure analysis, custom stress tests, visualization, model comparison, and CI regression gates introduced in earlier releases.
+These capabilities build on FailureLab's existing stress suites, experiment history, robustness policies, visualization, model comparison, and CI regression gates.
 
 ---
 
@@ -61,6 +51,15 @@ FailureLab currently provides:
 - Multi-severity stress sweeps
 - Failure envelopes
 - Custom stress tests
+- Cross-stress class vulnerability analysis
+- Sample-level repeated failure analysis
+- Stress failure correlation analysis
+- Failure clustering
+- Global and stress-specific robustness policies
+- Class-level robustness policies
+- Sample-level failure policies
+- Correlation and cluster policies
+- Minimum sample and class-coverage enforcement
 - PNG robustness visualizations
 - HTML and JSON reports
 - Reusable robustness snapshots
@@ -108,7 +107,7 @@ failurelab --version
 Expected:
 
 ```text
-failurelab 0.4.0
+failurelab 0.5.0
 ```
 
 ---
@@ -166,7 +165,7 @@ These can be evaluated individually or through configured suites and severity sw
 
 ## Configured Stress Suites
 
-v0.4.0 introduces reusable stress-suite configurations.
+FailureLab supports reusable stress-suite configurations.
 
 Example:
 
@@ -224,6 +223,142 @@ failurelab suite --config suite.json
 
 ---
 
+## Cross-Stress Vulnerability Analysis
+
+FailureLab can analyze whether individual classes repeatedly fail across multiple stress conditions.
+
+Instead of looking at each perturbation independently, cross-stress analysis identifies broader vulnerability patterns and classifies them by severity.
+
+This helps distinguish a weakness isolated to one perturbation from a class that is systematically fragile across several stresses.
+
+Cross-stress results can also be evaluated against configurable policies for automated robustness gating.
+
+CLI:
+
+```bash
+failurelab cross-stress --help
+```
+
+---
+
+## Sample-Level Failure Analysis
+
+FailureLab can identify individual samples that repeatedly fail across different stress conditions.
+
+Sample-level analysis tracks:
+
+- Failure frequency
+- Prediction-flip frequency
+- Stresses associated with failures
+- Stresses associated with prediction flips
+- Stable, localized, and systemic severity
+
+Sample failure reports can be saved to JSON and loaded later without requiring the original model evaluation to remain in memory.
+
+CLI:
+
+```bash
+failurelab sample-report --help
+```
+
+Sample-level policies can enforce limits on systemic failures for CI and automated evaluation workflows.
+
+---
+
+## Failure Correlation Analysis
+
+FailureLab can measure whether different stresses tend to fail on the same samples.
+
+For two stresses, the correlation analysis compares their failed-sample sets and measures their overlap.
+
+This can reveal relationships such as:
+
+```text
+blur + noise
+```
+
+repeatedly affecting the same vulnerable examples.
+
+FailureLab can analyze every stress pair automatically and rank the results by correlation strength.
+
+CLI:
+
+```bash
+failurelab correlation --help
+```
+
+Correlation policies can enforce limits on:
+
+- Maximum observed failure correlation
+- Number of highly correlated stress pairs
+- Configurable high-correlation thresholds
+
+---
+
+## Failure Clustering
+
+Pairwise correlations can be combined into larger vulnerability groups.
+
+FailureLab groups connected stresses whose failure correlation exceeds a configurable threshold.
+
+For example:
+
+```text
+blur + compression + noise
+```
+
+may form a single failure cluster when those perturbations repeatedly affect related samples.
+
+Cluster analysis reports:
+
+- Number of clusters
+- Stresses belonging to each cluster
+- Cluster size
+- Number of correlated pairs
+- Mean correlation within each cluster
+- Largest vulnerability cluster
+
+CLI:
+
+```bash
+failurelab clusters --help
+```
+
+Cluster policies can enforce limits such as:
+
+- Maximum number of vulnerability clusters
+- Maximum allowed cluster size
+
+---
+
+## Robustness Policies
+
+FailureLab supports configurable robustness policies that can turn analysis results into automated PASS/FAIL gates.
+
+Policy capabilities include:
+
+- Global robustness thresholds
+- Stress-specific thresholds
+- Warning and failure severity levels
+- Class-level policies
+- Class-specific warning/failure thresholds
+- Minimum sample requirements
+- Minimum class coverage
+- Sample-level systemic-failure limits
+- Correlation thresholds
+- High-correlation pair limits
+- Failure-cluster limits
+
+Policy evaluation is designed for local development and automated CI workflows.
+
+CLI:
+
+```bash
+failurelab policy-evaluate --help
+```
+
+---
+
 ## Experiment Tracking
 
 `ExperimentRunner` combines suite execution, result persistence, and history tracking.
@@ -246,14 +381,14 @@ output = runner.run(
 
 Each run can record:
 
-- suite name
-- model ID
-- run ID
-- timestamp
+- Suite name
+- Model ID
+- Run ID
+- Timestamp
 - PASS/FAIL status
-- worst stress
-- worst degradation
-- configured threshold
+- Worst stress
+- Worst degradation
+- Configured threshold
 
 Run IDs can be supplied explicitly or generated automatically.
 
@@ -439,8 +574,8 @@ comparison.require_pass()
 
 FailureLab evaluates both:
 
-- failure-threshold regressions
-- worst-case degradation regressions
+- Failure-threshold regressions
+- Worst-case degradation regressions
 
 If a candidate violates the robustness gate, `RobustnessRegressionError` is raised.
 
@@ -462,6 +597,23 @@ compare
 visualize
 suite
 history
+policy-evaluate
+cross-stress
+sample-report
+correlation
+clusters
+```
+
+Inspect individual commands with:
+
+```bash
+failurelab <command> --help
+```
+
+For example:
+
+```bash
+failurelab clusters --help
 ```
 
 Compare saved model snapshots:
@@ -485,7 +637,7 @@ CLI exit codes are suitable for automated pipelines:
 
 ```text
 0 = passed
-1 = robustness regression detected
+1 = robustness or policy failure detected
 2 = invalid input or configuration error
 ```
 
@@ -516,6 +668,9 @@ jobs:
       - name: Install FailureLab
         run: pip install .
 
+      - name: Run tests
+        run: python -m pytest -q
+
       - name: Compare robustness snapshots
         run: |
           failurelab compare \
@@ -523,13 +678,15 @@ jobs:
             --candidate reports/candidate_snapshot.json
 ```
 
-A detected regression returns a non-zero exit code and can block the pipeline.
+A detected regression or policy violation returns a non-zero exit code and can block the pipeline.
 
 ---
 
 ## Reports and Snapshots
 
-Reports can be exported as HTML or JSON:
+FailureLab supports structured output for robustness workflows.
+
+Core reports can be exported as HTML or JSON:
 
 ```python
 report.save_html(
@@ -549,7 +706,35 @@ report.save_snapshot(
 )
 ```
 
+v0.5.0 also provides structured JSON reports for:
+
+- Cross-stress analysis
+- Sample-level failure analysis
+- Failure correlation analysis
+- Failure clustering
+
 Snapshots allow model versions to be compared without rerunning the original evaluation during the comparison step.
+
+---
+
+## Public Python API
+
+FailureLab exposes its major robustness workflows through the package-level Python API.
+
+v0.5.0 includes public interfaces for:
+
+- Core robustness evaluation
+- Configured stress suites
+- Experiment history
+- Model comparison
+- Class-level policy evaluation
+- Cross-stress analysis
+- Sample-level failure analysis
+- Failure correlation
+- Failure clustering
+- Corresponding policy evaluators and configuration loaders
+
+This allows the same analysis capabilities used by the CLI to be integrated directly into Python evaluation pipelines.
 
 ---
 
@@ -559,15 +744,35 @@ Run the complete test suite:
 
 ```bash
 python -m pytest -q
-```
-
-FailureLab v0.4.0 currently passes:
+FailureLab v0.5.0 currently passes:
 
 ```text
-116 automated tests
+231 automated tests
+
 ```
 
-The suite covers core robustness evaluation, stress tests, scoring, per-class analysis, failure envelopes, snapshots, model comparisons, visualization, configured suites, experiment history, batch execution, and CLI behavior.
+FailureLab's automated suite covers:
+
+- Core robustness evaluation
+- Built-in and custom stress tests
+- Robustness scoring
+- Per-class analysis
+- Failure envelopes
+- Snapshots
+- Model comparison
+- Visualization
+- Configured suites
+- Experiment history
+- Batch execution
+- Robustness policies
+- Cross-stress analysis
+- Sample-level failure analysis
+- Failure correlation
+- Failure clustering
+- CLI behavior
+- Public API behavior
+
+The complete suite should pass before a release is built.
 
 ---
 
@@ -586,11 +791,11 @@ Artifacts are generated under:
 dist/
 ```
 
-For v0.4.0:
+For v0.5.0:
 
 ```text
-failurelab-0.4.0-py3-none-any.whl
-failurelab-0.4.0.tar.gz
+failurelab-0.5.0-py3-none-any.whl
+failurelab-0.5.0.tar.gz
 ```
 
 ---
@@ -601,20 +806,22 @@ FailureLab currently focuses on image-classification robustness.
 
 Its stress tests measure model behavior under configured image perturbations. FailureLab does not attempt to model every real-world distribution shift or establish that a model is safe for a particular deployment.
 
-Robustness scores, thresholds, and gates should be treated as engineering diagnostics under the configured evaluation.
+Robustness scores, thresholds, correlations, clusters, and policy gates should be treated as engineering diagnostics under the configured evaluation.
 
 ---
 
 ## Design Philosophy
 
-FailureLab is built around four questions:
+FailureLab is built around a few practical questions:
 
 1. What breaks the model?
 2. How severe is the weakness?
 3. At what point does failure begin?
-4. Did a new model version make robustness better or worse?
+4. Which classes and samples repeatedly fail?
+5. Which stresses expose the same underlying weaknesses?
+6. Did a new model version make robustness better or worse?
 
-The goal is to make robustness testing part of model development and validation rather than something discovered only after deployment.
+The goal is to make robustness testing and failure-pattern discovery part of model development and validation rather than something discovered only after deployment.
 
 ---
 
@@ -625,10 +832,10 @@ FailureLab is under active development.
 Current version:
 
 ```text
-0.4.0
+0.5.0
 ```
 
-v0.4.0 includes configuration-driven stress suites, experiment tracking, model/run metadata, robustness history, trend detection, batch execution, visualization, model comparison, and CI-compatible regression gates.
+v0.5.0 adds cross-stress vulnerability analysis, repeated sample-level failure analysis, stress failure correlation, failure clustering, and CI-compatible policy gates across these new analysis layers.
 
 ---
 

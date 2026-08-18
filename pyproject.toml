@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "failurelab"
-version = "0.4.0"
+version = "0.5.0"
 description = "Automated failure discovery, robustness testing, and regression gating for machine learning models."
 readme = "README.md"
 requires-python = ">=3.10"

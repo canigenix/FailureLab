@@ -1,3 +1,31 @@
+## [0.5.0] - 2026-08-17
+
+### Added
+
+- Cross-stress class vulnerability analysis.
+- Systemic, localized, and stable cross-stress severity classification.
+- Cross-stress JSON reports and policy gates.
+- Sample-level repeated failure and prediction-flip analysis.
+- Sample failure severity classification.
+- Persistent sample failure reports.
+- Sample-level policy gates and CLI workflow.
+- Stress failure correlation analysis.
+- Correlation reports, policies, and CLI workflow.
+- Failure clustering for correlated stress groups.
+- Cluster reports, policies, and CLI workflow.
+- Public Python API support for all v0.5.0 analysis layers.
+
+### Improved
+
+- FailureLab can now identify repeated weaknesses across classes, samples, and stress types.
+- CI workflows can enforce systemic vulnerability, correlation, and cluster thresholds.
+- Analysis results are more actionable through structured JSON reports and severity classifications.
+
+### Validation
+
+- Full automated test suite passing.
+- Public v0.5.0 API imports verified.
+
 ## [0.4.0] - 2026-08-16
 
 ### Added

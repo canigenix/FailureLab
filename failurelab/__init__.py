@@ -221,4 +221,4 @@ __all__ = [
     "load_failure_cluster_policy",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
