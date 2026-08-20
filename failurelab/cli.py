@@ -67,6 +67,34 @@ from failurelab.progression_risk import (
     score_checkpoint_risk,
 )
 
+from failurelab.failure_diagnostic_report import (
+    build_failure_diagnostic_report,
+)
+from failurelab.failure_signature import (
+    StressFailureSignal,
+    build_failure_signature,
+)
+from failurelab.signature_comparison import (
+    compare_failure_signatures,
+)
+from failurelab.signature_export import (
+    export_signature_json,
+)
+from failurelab.signature_policy import (
+    evaluate_signature_policy,
+)
+
+from failurelab.signature_history import (
+    SignatureCheckpoint,
+    analyze_signature_history,
+)
+from failurelab.signature_history_export import (
+    export_signature_history_json,
+)
+from failurelab.signature_history_policy import (
+    evaluate_signature_history_policy,
+)
+
 try:
     from . import __version__
 except ImportError:  # pragma: no cover
@@ -389,38 +417,135 @@ def build_parser():
         help="Optional output path for progression JSON.",
     )
 
-    return parser
+    signature_parser = subparsers.add_parser(
+        "signature",
+        help="Analyze a model failure signature across stresses.",
+    )
 
-    cluster_parser.add_argument(
+    signature_parser.add_argument(
         "--input",
         type=Path,
         required=True,
-        help="Saved sample failure report JSON file.",
+        help="JSON file containing stress failure signals.",
     )
 
-    cluster_parser.add_argument(
-        "--minimum-correlation",
-        type=float,
-        default=0.75,
-        help="Minimum correlation used to form clusters.",
-    )
-
-    cluster_parser.add_argument(
-        "--policy",
+    signature_parser.add_argument(
+        "--baseline",
         type=Path,
         default=None,
-        help="Optional failure cluster policy JSON file.",
+        help="Optional baseline stress-signal JSON for comparison.",
     )
 
-    cluster_parser.add_argument(
+    signature_parser.add_argument(
+        "--affected-threshold",
+        type=float,
+        default=0.10,
+        help="Failure-rate threshold for an affected stress.",
+    )
+
+    signature_parser.add_argument(
+        "--systemic-fraction",
+        type=float,
+        default=0.50,
+        help="Affected-stress fraction classified as systemic.",
+    )
+
+    signature_parser.add_argument(
+        "--instability-threshold",
+        type=float,
+        default=0.20,
+        help="Mean prediction-flip rate classified as unstable.",
+    )
+
+    signature_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.0,
+        help="Tolerance used when comparing failure signatures.",
+    )
+
+    signature_parser.add_argument(
         "--output",
         type=Path,
         default=None,
-        help="Optional output path for cluster JSON.",
+        help="Optional output path for signature JSON.",
     )
-    
 
-    
+    signature_history_parser = subparsers.add_parser(
+        "signature-history",
+        help="Analyze failure-signature evolution across model checkpoints.",
+    )
+
+    signature_history_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing labeled signature checkpoints.",
+    )
+
+    signature_history_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.0,
+        help="Tolerance used when comparing adjacent signatures.",
+    )
+
+    signature_history_parser.add_argument(
+        "--affected-threshold",
+        type=float,
+        default=0.10,
+        help="Failure-rate threshold for an affected stress.",
+    )
+
+    signature_history_parser.add_argument(
+        "--systemic-fraction",
+        type=float,
+        default=0.50,
+        help="Affected-stress fraction classified as systemic.",
+    )
+
+    signature_history_parser.add_argument(
+        "--instability-threshold",
+        type=float,
+        default=0.20,
+        help="Mean prediction-flip rate classified as unstable.",
+    )
+
+    signature_history_parser.add_argument(
+        "--max-regressed-transitions",
+        type=int,
+        default=None,
+        help="Optional maximum number of regressed transitions.",
+    )
+
+    signature_history_parser.add_argument(
+        "--max-severity-regressions",
+        type=int,
+        default=None,
+        help="Optional maximum number of severity regressions.",
+    )
+
+    signature_history_parser.add_argument(
+        "--max-dominant-stress-changes",
+        type=int,
+        default=None,
+        help="Optional maximum number of dominant-stress changes.",
+    )
+
+    signature_history_parser.add_argument(
+        "--reject-volatile",
+        action="store_true",
+        help="Fail the policy when signature history is volatile.",
+    )
+
+    signature_history_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for signature-history JSON.",
+    )
+
+    return parser
 
 
 def _load_model_snapshot(
@@ -1340,104 +1465,6 @@ def run_clusters(
     print("RESULT: PASSED")
     return 0
 
-def main():
-    args = build_parser().parse_args()
-
-    try:
-        if args.command == "check":
-            return run_check(
-                args.policy
-            )
-
-        if args.command == "compare":
-            return run_compare(
-                baseline_path=args.baseline,
-                candidate_path=args.candidate,
-                regression_tolerance=args.tolerance,
-            )
-
-        if args.command == "visualize":
-            return run_visualize(
-                input_path=args.input,
-                output_path=args.output,
-            )
-
-        if args.command == "suite":
-            return run_suite(
-                config_path=args.config,
-            )
-
-        if args.command == "history":
-            return run_history(
-                input_path=args.input,
-                suite_name=args.suite,
-                model_id=args.model,
-                tolerance=args.tolerance,
-            )
-
-        if args.command == "policy-evaluate":
-            return run_policy_evaluate(
-                result_path=args.result,
-                policy_path=args.policy,
-                class_policy_path=args.class_policy,
-            )
-
-        if args.command == "cross-stress":
-            
-            return run_cross_stress(
-                result_path=args.result,
-                policy_path=args.policy,
-                output_path=args.output,
-            )
-
-        if args.command == "sample-report":
-            return run_sample_report(
-                input_path=args.input,
-                policy_path=args.policy,
-
-            )
-
-        if args.command == "correlation":
-            return run_correlation(
-                input_path=args.input,
-                policy_path=args.policy,
-                output_path=args.output,
-            )
-
-        if args.command == "clusters":
-            return run_clusters(
-                input_path=args.input,
-                minimum_correlation=(
-                    args.minimum_correlation
-                ),
-                policy_path=args.policy,
-                output_path=args.output,
-            )
-
-        
-
-        
-
-        
-        
-        
-
-    except (
-        FileNotFoundError,
-        ValueError,
-        json.JSONDecodeError,
-        KeyError,
-        TypeError,
-    ) as exc:
-        print(
-            f"FailureLab error: {exc}",
-            file=sys.stderr,
-        )
-
-        return 2
-
-    return 2
-
 
 def run_progression(
     input_path: Path,
@@ -1560,6 +1587,303 @@ def run_progression(
 
     return 0
 
+def run_signature(
+    input_path: Path,
+    baseline_path: Path | None = None,
+    affected_threshold: float = 0.10,
+    systemic_fraction: float = 0.50,
+    instability_threshold: float = 0.20,
+    tolerance: float = 0.0,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Signature input must be a JSON list."
+        )
+
+    signals = [
+        StressFailureSignal(
+            stress_name=row["stress_name"],
+            failure_rate=float(
+                row["failure_rate"]
+            ),
+            prediction_flip_rate=float(
+                row["prediction_flip_rate"]
+            ),
+        )
+        for row in data
+    ]
+
+    signature = build_failure_signature(
+        signals,
+        affected_threshold=affected_threshold,
+        systemic_fraction=systemic_fraction,
+        instability_threshold=instability_threshold,
+    )
+
+    diagnostic_report = build_failure_diagnostic_report(
+        signature
+    )
+
+    print(
+        f"Signature type: {signature.signature_type}"
+    )
+    print(
+        f"Dominant stress: {signature.dominant_stress}"
+    )
+    print(
+        f"Dominant failure rate: "
+        f"{signature.dominant_failure_rate:.2%}"
+    )
+    print(
+        f"Mean failure rate: "
+        f"{signature.mean_failure_rate:.2%}"
+    )
+    print(
+        f"Mean flip rate: "
+        f"{signature.mean_flip_rate:.2%}"
+    )
+    print(
+        f"Affected stresses: "
+        f"{len(signature.affected_stresses)}"
+    )
+
+    print()
+    print(
+        diagnostic_report.diagnosis.diagnosis
+    )
+
+    comparison = None
+
+    if baseline_path is not None:
+        baseline_data = json.loads(
+            baseline_path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        if not isinstance(
+            baseline_data,
+            list,
+        ):
+            raise ValueError(
+                "Baseline signature input must be a JSON list."
+            )
+
+        baseline_signals = [
+            StressFailureSignal(
+                stress_name=row["stress_name"],
+                failure_rate=float(
+                    row["failure_rate"]
+                ),
+                prediction_flip_rate=float(
+                    row["prediction_flip_rate"]
+                ),
+            )
+            for row in baseline_data
+        ]
+
+        baseline_signature = build_failure_signature(
+            baseline_signals,
+            affected_threshold=affected_threshold,
+            systemic_fraction=systemic_fraction,
+            instability_threshold=instability_threshold,
+        )
+
+        comparison = compare_failure_signatures(
+            baseline_signature,
+            signature,
+            tolerance=tolerance,
+        )
+
+        print()
+        print(
+            f"Comparison status: {comparison.status}"
+        )
+        print(
+            f"Mean failure-rate delta: "
+            f"{comparison.mean_failure_rate_delta:.2%}"
+        )
+        print(
+            f"Mean flip-rate delta: "
+            f"{comparison.mean_flip_rate_delta:.2%}"
+        )
+
+    if output_path is not None:
+        export_signature_json(
+            signature,
+            output_path,
+            diagnostic_report=diagnostic_report,
+            comparison=comparison,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
+
+def run_signature_history(
+    input_path: Path,
+    tolerance: float = 0.0,
+    affected_threshold: float = 0.10,
+    systemic_fraction: float = 0.50,
+    instability_threshold: float = 0.20,
+    max_regressed_transitions: int | None = None,
+    max_severity_regressions: int | None = None,
+    max_dominant_stress_changes: int | None = None,
+    reject_volatile: bool = False,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Signature history input must be a JSON list."
+        )
+
+    checkpoints = []
+
+    for row in data:
+        label = row["label"]
+        signal_rows = row.get(
+            "signals",
+            row.get("signature"),
+        )
+
+        if not isinstance(signal_rows, list):
+            raise ValueError(
+                "Each signature history checkpoint must contain "
+                "a 'signals' list."
+            )
+
+        signals = [
+            StressFailureSignal(
+                stress_name=signal["stress_name"],
+                failure_rate=float(
+                    signal["failure_rate"]
+                ),
+                prediction_flip_rate=float(
+                    signal["prediction_flip_rate"]
+                ),
+            )
+            for signal in signal_rows
+        ]
+
+        signature = build_failure_signature(
+            signals,
+            affected_threshold=affected_threshold,
+            systemic_fraction=systemic_fraction,
+            instability_threshold=instability_threshold,
+        )
+
+        checkpoints.append(
+            SignatureCheckpoint(
+                label=label,
+                signature=signature,
+            )
+        )
+
+    report = analyze_signature_history(
+        checkpoints,
+        tolerance=tolerance,
+    )
+
+    print(
+        f"Trend: {report.trend}"
+    )
+    print(
+        f"Checkpoints: {len(report.checkpoints)}"
+    )
+    print(
+        f"Improved transitions: {report.improved_transitions}"
+    )
+    print(
+        f"Stable transitions: {report.stable_transitions}"
+    )
+    print(
+        f"Regressed transitions: {report.regressed_transitions}"
+    )
+    print(
+        f"Severity regressions: {report.severity_regressions}"
+    )
+    print(
+        f"Dominant stress changes: {report.dominant_stress_changes}"
+    )
+
+    policy = None
+
+    if (
+        max_regressed_transitions is not None
+        or max_severity_regressions is not None
+        or max_dominant_stress_changes is not None
+        or reject_volatile
+    ):
+        policy = evaluate_signature_history_policy(
+            report,
+            max_regressed_transitions=(
+                max_regressed_transitions
+                if max_regressed_transitions is not None
+                else len(report.transitions)
+            ),
+            max_severity_regressions=(
+                max_severity_regressions
+                if max_severity_regressions is not None
+                else len(report.transitions)
+            ),
+            max_dominant_stress_changes=(
+                max_dominant_stress_changes
+            ),
+            allow_volatile=not reject_volatile,
+        )
+
+        for violation in policy.violations:
+            print(
+                f"- {violation}"
+            )
+
+    if output_path is not None:
+        export_signature_history_json(
+            report,
+            output_path,
+            policy=policy,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy is not None and not policy.passed:
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
+
 def main():
     args = build_parser().parse_args()
 
@@ -1637,6 +1961,33 @@ def main():
                 max_regression=args.max_regression,
                 max_regressed_transitions=(
                     args.max_regressed_transitions
+                ),
+                reject_volatile=args.reject_volatile,
+                output_path=args.output,
+            )
+
+        if args.command == "signature":
+            return run_signature(
+                input_path=args.input,
+                baseline_path=args.baseline,
+                affected_threshold=args.affected_threshold,
+                systemic_fraction=args.systemic_fraction,
+                instability_threshold=args.instability_threshold,
+                tolerance=args.tolerance,
+                output_path=args.output,
+            )
+
+        if args.command == "signature-history":
+            return run_signature_history(
+                input_path=args.input,
+                tolerance=args.tolerance,
+                affected_threshold=args.affected_threshold,
+                systemic_fraction=args.systemic_fraction,
+                instability_threshold=args.instability_threshold,
+                max_regressed_transitions=args.max_regressed_transitions,
+                max_severity_regressions=args.max_severity_regressions,
+                max_dominant_stress_changes=(
+                    args.max_dominant_stress_changes
                 ),
                 reject_volatile=args.reject_volatile,
                 output_path=args.output,

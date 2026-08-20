@@ -58,7 +58,38 @@ from failurelab.progression_risk import (
 from failurelab.progression_export import (
     export_progression_json,
 )
-
+from failurelab.failure_signature import (
+    FailureSignature,
+    StressFailureSignal,
+    build_failure_signature,
+)
+from failurelab.failure_diagnostic_report import (
+    FailureDiagnosticReport,
+    build_failure_diagnostic_report,
+)
+from failurelab.signature_comparison import (
+    FailureSignatureComparison,
+    compare_failure_signatures,
+)
+from failurelab.signature_policy import (
+    SignaturePolicyResult,
+    evaluate_signature_policy,
+)
+from failurelab.signature_export import (
+    export_signature_json,
+)
+from failurelab.signature_history import (
+    SignatureCheckpoint,
+    SignatureHistoryReport,
+    analyze_signature_history,
+)
+from failurelab.signature_history_policy import (
+    SignatureHistoryPolicyResult,
+    evaluate_signature_history_policy,
+)
+from failurelab.signature_history_export import (
+    export_signature_history_json,
+)
 
 @dataclass
 class FailureLabReport:
@@ -542,4 +573,153 @@ class FailureLab:
             path,
             policy=policy,
             risks=risks,
+        )
+
+    @staticmethod
+    def failure_signature(
+        signals,
+        *,
+        affected_threshold: float = 0.10,
+        systemic_fraction: float = 0.50,
+        instability_threshold: float = 0.20,
+    ) -> FailureSignature:
+        """Build a failure signature from stress-level signals."""
+
+        stress_signals = [
+            signal
+            if isinstance(signal, StressFailureSignal)
+            else StressFailureSignal(
+                stress_name=signal[0],
+                failure_rate=signal[1],
+                prediction_flip_rate=signal[2],
+            )
+            for signal in signals
+        ]
+
+        return build_failure_signature(
+            stress_signals,
+            affected_threshold=affected_threshold,
+            systemic_fraction=systemic_fraction,
+            instability_threshold=instability_threshold,
+        )
+
+    @staticmethod
+    def diagnose_failure_signature(
+        signature: FailureSignature,
+    ) -> FailureDiagnosticReport:
+        """Build a diagnostic report for a failure signature."""
+
+        return build_failure_diagnostic_report(
+            signature
+        )
+
+    @staticmethod
+    def compare_failure_signatures(
+        baseline: FailureSignature,
+        candidate: FailureSignature,
+        *,
+        tolerance: float = 0.0,
+    ) -> FailureSignatureComparison:
+        """Compare two failure signatures."""
+
+        return compare_failure_signatures(
+            baseline,
+            candidate,
+            tolerance=tolerance,
+        )
+
+    @staticmethod
+    def signature_policy(
+        comparison: FailureSignatureComparison,
+        *,
+        max_failure_rate_increase: float = 0.0,
+        max_flip_rate_increase: float = 0.0,
+        max_affected_stress_increase: int = 0,
+        allow_dominant_stress_change: bool = True,
+        allow_severity_regression: bool = False,
+    ) -> SignaturePolicyResult:
+        """Evaluate a failure-signature comparison against policy rules."""
+
+        return evaluate_signature_policy(
+            comparison,
+            max_failure_rate_increase=max_failure_rate_increase,
+            max_flip_rate_increase=max_flip_rate_increase,
+            max_affected_stress_increase=max_affected_stress_increase,
+            allow_dominant_stress_change=allow_dominant_stress_change,
+            allow_severity_regression=allow_severity_regression,
+        )
+
+    @staticmethod
+    def save_signature_json(
+        signature: FailureSignature,
+        path,
+        *,
+        diagnostic_report: FailureDiagnosticReport | None = None,
+        comparison: FailureSignatureComparison | None = None,
+        policy: SignaturePolicyResult | None = None,
+    ) -> Path:
+        """Export failure-signature analysis as JSON."""
+
+        return export_signature_json(
+            signature,
+            path,
+            diagnostic_report=diagnostic_report,
+            comparison=comparison,
+            policy=policy,
+        )
+    @staticmethod
+    def signature_history(
+        checkpoints,
+        *,
+        tolerance: float = 0.0,
+    ) -> SignatureHistoryReport:
+        """Analyze failure-signature evolution across model versions."""
+
+        history_checkpoints = [
+            checkpoint
+            if isinstance(checkpoint, SignatureCheckpoint)
+            else SignatureCheckpoint(
+                label=checkpoint[0],
+                signature=checkpoint[1],
+            )
+            for checkpoint in checkpoints
+        ]
+
+        return analyze_signature_history(
+            history_checkpoints,
+            tolerance=tolerance,
+        )
+
+    @staticmethod
+    def signature_history_policy(
+        report: SignatureHistoryReport,
+        *,
+        max_regressed_transitions: int = 0,
+        max_severity_regressions: int = 0,
+        max_dominant_stress_changes: int | None = None,
+        allow_volatile: bool = False,
+    ) -> SignatureHistoryPolicyResult:
+        """Evaluate signature-history evolution against policy rules."""
+
+        return evaluate_signature_history_policy(
+            report,
+            max_regressed_transitions=max_regressed_transitions,
+            max_severity_regressions=max_severity_regressions,
+            max_dominant_stress_changes=max_dominant_stress_changes,
+            allow_volatile=allow_volatile,
+        )
+
+    @staticmethod
+    def save_signature_history_json(
+        report: SignatureHistoryReport,
+        path,
+        *,
+        policy: SignatureHistoryPolicyResult | None = None,
+    ) -> Path:
+        """Export signature-history analysis as JSON."""
+
+        return export_signature_history_json(
+            report,
+            path,
+            policy=policy,
         )

@@ -1,3 +1,22 @@
+## [0.7.0]
+
+### Added
+
+- Failure signatures for identifying model weakness patterns across stresses
+- Localized, systemic, unstable, and low-risk signature classification
+- Structured failure diagnostics with likely causes and recommended actions
+- Failure signature comparison across model versions
+- Signature regression and severity policy gates
+- Dominant-stress change detection
+- JSON export for signatures, diagnostics, comparisons, and policy results
+- Multi-version failure signature history analysis
+- Improving, stable, degrading, and volatile history trend classification
+- Signature history policy gates for regressions, severity changes, dominant-stress changes, and volatility
+- JSON export for signature history and policy results
+- Public Python API support for signature and signature-history workflows
+- `signature` CLI command
+- `signature-history` CLI command
+
 ## [0.6.0] - 2026-08-19
 
 ### Added

@@ -166,6 +166,52 @@ from failurelab.progression import (
     failure_rate_delta,
     summarize_progression_history,
 )
+from failurelab.failure_signature import (
+    FailureSignature,
+    FailureSignatureType,
+    StressFailureSignal,
+    build_failure_signature,
+    classify_failure_signature,
+)
+from failurelab.failure_diagnosis import (
+    FailureDiagnosis,
+    diagnose_failure_signature,
+)
+from failurelab.failure_diagnostic_report import (
+    FailureDiagnosticReport,
+    build_failure_diagnostic_report,
+)
+from failurelab.signature_comparison import (
+    FailureSignatureComparison,
+    SignatureComparisonStatus,
+    classify_signature_comparison,
+    compare_failure_signatures,
+)
+from failurelab.signature_policy import (
+    SignaturePolicyResult,
+    evaluate_signature_policy,
+)
+from failurelab.signature_export import (
+    diagnostic_report_to_dict,
+    export_signature_json,
+    failure_signature_to_dict,
+    signature_comparison_to_dict,
+)
+from failurelab.signature_history import (
+    SignatureCheckpoint,
+    SignatureHistoryReport,
+    SignatureHistoryTrend,
+    analyze_signature_history,
+    classify_signature_history_trend,
+)
+from failurelab.signature_history_policy import (
+    SignatureHistoryPolicyResult,
+    evaluate_signature_history_policy,
+)
+from failurelab.signature_history_export import (
+    export_signature_history_json,
+    signature_history_to_dict,
+)
 
 __all__ = [
     "FailureLab",
@@ -265,6 +311,34 @@ __all__ = [
 "score_checkpoint_risk",
 "export_progression_json",
 "progression_report_to_dict",
+"FailureSignature",
+"FailureSignatureType",
+"StressFailureSignal",
+"build_failure_signature",
+"classify_failure_signature",
+"FailureDiagnosis",
+"diagnose_failure_signature",
+"FailureDiagnosticReport",
+"build_failure_diagnostic_report",
+"FailureSignatureComparison",
+"SignatureComparisonStatus",
+"classify_signature_comparison",
+"compare_failure_signatures",
+"SignaturePolicyResult",
+"evaluate_signature_policy",
+"diagnostic_report_to_dict",
+"export_signature_json",
+"failure_signature_to_dict",
+"signature_comparison_to_dict",
+"SignatureCheckpoint",
+"SignatureHistoryReport",
+"SignatureHistoryTrend",
+"analyze_signature_history",
+"classify_signature_history_trend",
+"SignatureHistoryPolicyResult",
+"evaluate_signature_history_policy",
+"export_signature_history_json",
+"signature_history_to_dict",
 ]
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
