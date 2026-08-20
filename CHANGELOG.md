@@ -1,3 +1,28 @@
+## [0.6.0] - 2026-08-19
+
+### Added
+
+- Model failure progression analysis across checkpoints and versions
+- Improved, stable, and regressed transition classification
+- Progression trend detection for improving, stable, degrading, and volatile histories
+- Configurable tolerance for progression analysis
+- Progression policy gates for automated regression enforcement
+- Maximum overall regression and regressed-transition limits
+- Optional volatile-history rejection
+- Checkpoint risk scoring and highest-risk checkpoint detection
+- Structured progression history reports
+- JSON export for progression reports, policy results, and checkpoint risks
+- Public Python API for progression workflows
+- `failurelab progression` CLI command
+- CLI support for progression policies, tolerance, risk analysis, and JSON output
+
+### Testing
+
+- Added unit tests for progression analysis, policies, risk scoring, and JSON export
+- Added public API coverage for progression workflows
+- Added CLI progression tests
+- Full automated test suite passing
+
 ## [0.5.0] - 2026-08-17
 
 ### Added
