@@ -139,6 +139,34 @@ from failurelab.failure_correlation_policy_config import (
     load_failure_correlation_policy,
 )
 
+from failurelab.progression_policy import (
+    ProgressionPolicyResult,
+    evaluate_progression_policy,
+)
+from failurelab.progression_risk import (
+    CheckpointRisk,
+    highest_risk_checkpoint,
+    score_checkpoint_risk,
+)
+from failurelab.progression_export import (
+    export_progression_json,
+    progression_report_to_dict,
+)
+
+from failurelab.progression import (
+    ProgressionHistoryReport,
+    ProgressionPoint,
+    ProgressionReport,
+    ProgressionStatus,
+    ProgressionTrend,
+    analyze_progression,
+    analyze_progression_history,
+    classify_progression,
+    classify_progression_trend,
+    failure_rate_delta,
+    summarize_progression_history,
+)
+
 __all__ = [
     "FailureLab",
     "FailureLabReport",
@@ -219,6 +247,24 @@ __all__ = [
     "FailureClusterPolicyViolation",
     "evaluate_failure_cluster_policy",
     "load_failure_cluster_policy",
+    "ProgressionHistoryReport",
+"ProgressionPoint",
+"ProgressionReport",
+"ProgressionStatus",
+"ProgressionTrend",
+"analyze_progression",
+"analyze_progression_history",
+"classify_progression",
+"classify_progression_trend",
+"failure_rate_delta",
+"summarize_progression_history",
+"ProgressionPolicyResult",
+"evaluate_progression_policy",
+"CheckpointRisk",
+"highest_risk_checkpoint",
+"score_checkpoint_risk",
+"export_progression_json",
+"progression_report_to_dict",
 ]
 
 __version__ = "0.5.0"

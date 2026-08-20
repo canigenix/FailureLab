@@ -56,6 +56,17 @@ from .comparison import (
 )
 from .policy import load_policy
 
+from failurelab.progression import (
+    ProgressionPoint,
+    summarize_progression_history,
+)
+from failurelab.progression_export import export_progression_json
+from failurelab.progression_policy import evaluate_progression_policy
+from failurelab.progression_risk import (
+    highest_risk_checkpoint,
+    score_checkpoint_risk,
+)
+
 try:
     from . import __version__
 except ImportError:  # pragma: no cover
@@ -330,6 +341,52 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional output path for cluster JSON.",
+    )
+
+    progression_parser = subparsers.add_parser(
+        "progression",
+        help="Analyze failure-rate progression across model checkpoints.",
+    )
+
+    progression_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing model checkpoints and failure rates.",
+    )
+
+    progression_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.0,
+        help="Maximum failure-rate change treated as stable.",
+    )
+
+    progression_parser.add_argument(
+        "--max-regression",
+        type=float,
+        default=None,
+        help="Optional maximum allowed overall failure-rate regression.",
+    )
+
+    progression_parser.add_argument(
+        "--max-regressed-transitions",
+        type=int,
+        default=None,
+        help="Optional maximum number of regressed transitions.",
+    )
+
+    progression_parser.add_argument(
+        "--reject-volatile",
+        action="store_true",
+        help="Fail the policy when progression is volatile.",
+    )
+
+    progression_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for progression JSON.",
     )
 
     return parser
@@ -1360,6 +1417,8 @@ def main():
         
 
         
+
+        
         
         
 
@@ -1380,7 +1439,227 @@ def main():
     return 2
 
 
+def run_progression(
+    input_path: Path,
+    tolerance: float = 0.0,
+    max_regression: float | None = None,
+    max_regressed_transitions: int | None = None,
+    reject_volatile: bool = False,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Progression input must be a JSON list."
+        )
+
+    points = [
+        ProgressionPoint(
+            label=row["label"],
+            failure_rate=float(
+                row["failure_rate"]
+            ),
+        )
+        for row in data
+    ]
+
+    report = summarize_progression_history(
+        points,
+        tolerance=tolerance,
+    )
+
+    print(
+        f"Overall status: {report.overall_status}"
+    )
+    print(
+        f"Trend: {report.trend}"
+    )
+    print(
+        f"Overall delta: {report.overall_delta:.2%}"
+    )
+    print(
+        f"Improved transitions: {report.improved_count}"
+    )
+    print(
+        f"Stable transitions: {report.stable_count}"
+    )
+    print(
+        f"Regressed transitions: {report.regressed_count}"
+    )
+
+    highest_risk = highest_risk_checkpoint(
+        points
+    )
+
+    print(
+        f"Highest-risk checkpoint: "
+        f"{highest_risk.label} "
+        f"({highest_risk.risk_score:.2%})"
+    )
+
+    policy = None
+
+    if (
+        max_regression is not None
+        or max_regressed_transitions is not None
+        or reject_volatile
+    ):
+        policy = evaluate_progression_policy(
+            report,
+            max_overall_regression=(
+                max_regression
+                if max_regression is not None
+                else float("inf")
+            ),
+            max_regressed_transitions=(
+                max_regressed_transitions
+                if max_regressed_transitions is not None
+                else len(report.transitions)
+            ),
+            allow_volatile=not reject_volatile,
+        )
+
+        for violation in policy.violations:
+            print(
+                f"- {violation}"
+            )
+
+    risks = score_checkpoint_risk(
+        points
+    )
+
+    if output_path is not None:
+        export_progression_json(
+            report,
+            output_path,
+            policy=policy,
+            risks=risks,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy is not None and not policy.passed:
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
+def main():
+    args = build_parser().parse_args()
+
+    try:
+        if args.command == "check":
+            return run_check(
+                args.policy
+            )
+
+        if args.command == "compare":
+            return run_compare(
+                baseline_path=args.baseline,
+                candidate_path=args.candidate,
+                regression_tolerance=args.tolerance,
+            )
+
+        if args.command == "visualize":
+            return run_visualize(
+                input_path=args.input,
+                output_path=args.output,
+            )
+
+        if args.command == "suite":
+            return run_suite(
+                config_path=args.config,
+            )
+
+        if args.command == "history":
+            return run_history(
+                input_path=args.input,
+                suite_name=args.suite,
+                model_id=args.model,
+                tolerance=args.tolerance,
+            )
+
+        if args.command == "policy-evaluate":
+            return run_policy_evaluate(
+                result_path=args.result,
+                policy_path=args.policy,
+                class_policy_path=args.class_policy,
+            )
+
+        if args.command == "cross-stress":
+            return run_cross_stress(
+                result_path=args.result,
+                policy_path=args.policy,
+                output_path=args.output,
+            )
+
+        if args.command == "sample-report":
+            return run_sample_report(
+                input_path=args.input,
+                policy_path=args.policy,
+            )
+
+        if args.command == "correlation":
+            return run_correlation(
+                input_path=args.input,
+                policy_path=args.policy,
+                output_path=args.output,
+            )
+
+        if args.command == "clusters":
+            return run_clusters(
+                input_path=args.input,
+                minimum_correlation=args.minimum_correlation,
+                policy_path=args.policy,
+                output_path=args.output,
+            )
+
+        if args.command == "progression":
+            return run_progression(
+                input_path=args.input,
+                tolerance=args.tolerance,
+                max_regression=args.max_regression,
+                max_regressed_transitions=(
+                    args.max_regressed_transitions
+                ),
+                reject_volatile=args.reject_volatile,
+                output_path=args.output,
+            )
+
+    except (
+        FileNotFoundError,
+        ValueError,
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+    ) as exc:
+        print(
+            f"FailureLab error: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+
+    return 2
+
 if __name__ == "__main__":
     sys.exit(
         main()
     )
+
+    

@@ -16,6 +16,12 @@ from failurelab.failure_envelope import (
     FailureEnvelope,
     build_failure_envelope,
 )
+
+from failurelab.progression import (
+    ProgressionHistoryReport,
+    ProgressionPoint,
+    summarize_progression_history,
+)
 from failurelab.occlusion import OcclusionTest
 from failurelab.recommendations import (
     Recommendation,
@@ -39,6 +45,18 @@ from failurelab.vision_report import (
 from failurelab.vision_runner import (
     VisionStressResult,
     VisionStressRunner,
+)
+from failurelab.progression_policy import (
+    ProgressionPolicyResult,
+    evaluate_progression_policy,
+)
+from failurelab.progression_risk import (
+    CheckpointRisk,
+    highest_risk_checkpoint,
+    score_checkpoint_risk,
+)
+from failurelab.progression_export import (
+    export_progression_json,
 )
 
 
@@ -432,4 +450,96 @@ class FailureLab:
 
         return build_failure_envelope(
             sweeps
+        )
+
+    @staticmethod
+    def progression(
+        points,
+        tolerance: float = 0.0,
+    ) -> ProgressionHistoryReport:
+        """Analyze failure-rate progression across model checkpoints."""
+
+        progression_points = [
+            point
+            if isinstance(point, ProgressionPoint)
+            else ProgressionPoint(
+                label=point[0],
+                failure_rate=point[1],
+            )
+            for point in points
+        ]
+
+        return summarize_progression_history(
+            progression_points,
+            tolerance=tolerance,
+        )
+
+    @staticmethod
+    def progression_policy(
+        report: ProgressionHistoryReport,
+        *,
+        max_overall_regression: float = 0.0,
+        max_regressed_transitions: int = 0,
+        allow_volatile: bool = True,
+    ) -> ProgressionPolicyResult:
+        """Evaluate progression history against policy rules."""
+
+        return evaluate_progression_policy(
+            report,
+            max_overall_regression=max_overall_regression,
+            max_regressed_transitions=max_regressed_transitions,
+            allow_volatile=allow_volatile,
+        )
+
+    @staticmethod
+    def progression_risk(
+        points,
+    ) -> list[CheckpointRisk]:
+        """Score risk across model checkpoints."""
+
+        progression_points = [
+            point
+            if isinstance(point, ProgressionPoint)
+            else ProgressionPoint(
+                label=point[0],
+                failure_rate=point[1],
+            )
+            for point in points
+        ]
+
+        return score_checkpoint_risk(progression_points)
+
+    @staticmethod
+    def highest_progression_risk(
+        points,
+    ) -> CheckpointRisk:
+        """Return the highest-risk model checkpoint."""
+
+        progression_points = [
+            point
+            if isinstance(point, ProgressionPoint)
+            else ProgressionPoint(
+                label=point[0],
+                failure_rate=point[1],
+            )
+            for point in points
+        ]
+
+        return highest_risk_checkpoint(progression_points)
+
+    @staticmethod
+    def save_progression_json(
+        report: ProgressionHistoryReport,
+        path,
+        *,
+        policy: ProgressionPolicyResult | None = None,
+        risks: list[CheckpointRisk] | None = None,
+    ) -> Path:
+        """Export progression analysis as JSON."""
+
+        return export_progression_json(
+            report,
+            path,
+            policy=policy,
+            risks=risks,
         )
