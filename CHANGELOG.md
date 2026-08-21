@@ -1,3 +1,27 @@
+## [0.14.0] - 2026-08-21
+
+### Added
+
+- Configurable evaluation release gates for unified evaluations
+- `EvaluationGateResult` for structured gate outcomes
+- Evaluation gate configuration loaded from JSON
+- `maximum_failed_analyses` gate threshold
+- Configurable `allowed_health_statuses`
+- Gate runner for applying release policies to evaluation intelligence
+- Report-level evaluation gate service
+- `--gate-config` support for `failurelab evaluate`
+- CLI gate PASS/FAIL reporting
+- Gate violations in CLI output
+- CI-compatible non-zero exit codes when evaluation gates fail
+
+### Improved
+
+- Unified evaluations can now act as configurable CI and release gates
+- Teams can define acceptable model-health states independently of individual analysis results
+- Gate configuration supports controlled degradation policies such as allowing `watch` while rejecting `at-risk` or `critical`
+- Existing `evaluate` workflows remain compatible when no gate configuration is supplied
+- Evaluation intelligence can now drive automated deployment and release decisions
+
 ## [0.13.0] - 2026-08-21
 
 ### Added

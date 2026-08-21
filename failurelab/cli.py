@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import json
 import sys
 from failurelab.failure_cluster_policy import (
@@ -173,6 +173,9 @@ from failurelab.triage_comparison_export import (
 )
 from failurelab.triage_comparison_policy import (
     evaluate_triage_comparison_policy,
+)
+from failurelab.evaluation_gate_service import (
+    evaluate_report_gate,
 )
 
 try:
@@ -881,10 +884,9 @@ def build_parser():
         help="Optional output path for forecast JSON.",
     )
 
-
     evaluate_parser = subparsers.add_parser(
         "evaluate",
-        help="Load and inspect a complete FailureLab evaluation profile.",
+        help="Run a complete FailureLab evaluation profile.",
     )
 
     evaluate_parser.add_argument(
@@ -898,11 +900,18 @@ def build_parser():
         "--output",
         type=Path,
         default=None,
-        help="Optional output path for the evaluation-plan JSON report.",
+        help="Optional output path for the evaluation JSON report.",
     )
 
-    return parser
+    evaluate_parser.add_argument(
+        "--gate-config",
+        type=Path,
+        default=None,
+        help="Optional evaluation gate configuration JSON file.",
+    )
 
+
+    return parser
 
 def _load_model_snapshot(
     path: Path,
@@ -2761,6 +2770,7 @@ def run_forecast(
 def run_evaluate(
     config_path: Path,
     output_path: Path | None = None,
+    gate_config_path: Path | None = None,
 ) -> int:
     """Load, validate, and execute an evaluation profile."""
 
@@ -2857,6 +2867,24 @@ def run_evaluate(
             )
         )
 
+    gate_result = None
+
+    if gate_config_path is not None:
+        gate_result = evaluate_report_gate(
+            report,
+            gate_config_path,
+        )
+
+        print()
+        print(
+            f"Gate: {gate_result.status.upper()}"
+        )
+
+        for violation in gate_result.violations:
+            print(
+                f"- {violation}"
+            )
+
     if output_path is not None:
         export_evaluation_json(
             report,
@@ -2868,6 +2896,15 @@ def run_evaluate(
         )
 
     print()
+
+    if (
+        gate_result is not None
+        and not gate_result.passed
+    ):
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
 
     if not report.passed:
         print(
@@ -3037,11 +3074,11 @@ def main():
                 output_path=args.output,
             )
 
-
         if args.command == "evaluate":
             return run_evaluate(
                 config_path=args.config,
                 output_path=args.output,
+                gate_config_path=args.gate_config,
             )
 
         if args.command == "forecast":

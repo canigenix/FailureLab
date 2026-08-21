@@ -613,3 +613,154 @@ def test_evaluate_cli_prints_health_summary(
         "All enabled analyses passed."
         in output
     )
+
+
+def test_evaluate_cli_gate_passes(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    write_occurrence_input(
+        tmp_path
+    )
+
+    config_path = write_profile(
+        tmp_path,
+        {
+            "name": "production",
+            "suite_config": "suite.json",
+            "occurrence_input": "failures.json",
+            "run_forecast": True,
+        },
+    )
+
+    gate_path = tmp_path / "gate.json"
+
+    gate_path.write_text(
+        json.dumps(
+            {
+                "maximum_failed_analyses": 0,
+                "allowed_health_statuses": [
+                    "healthy",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "evaluate",
+            "--config",
+            str(config_path),
+            "--gate-config",
+            str(gate_path),
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Health: healthy" in output
+    assert "Gate: PASSED" in output
+    assert "RESULT: PASSED" in output
+
+
+def test_evaluate_cli_gate_rejects_health(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    write_occurrence_input(
+        tmp_path
+    )
+
+    config_path = write_profile(
+        tmp_path,
+        {
+            "name": "production",
+            "suite_config": "suite.json",
+            "occurrence_input": "failures.json",
+            "run_forecast": True,
+        },
+    )
+
+    gate_path = tmp_path / "gate.json"
+
+    gate_path.write_text(
+        json.dumps(
+            {
+                "maximum_failed_analyses": 1,
+                "allowed_health_statuses": [
+                    "watch",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "evaluate",
+            "--config",
+            str(config_path),
+            "--gate-config",
+            str(gate_path),
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert "Gate: FAILED" in output
+
+    assert (
+        "Health status 'healthy' is not allowed."
+        in output
+    )
+
+    assert "RESULT: FAILED" in output
+
+
+def test_evaluate_cli_without_gate_remains_compatible(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    write_occurrence_input(
+        tmp_path
+    )
+
+    config_path = write_profile(
+        tmp_path,
+        {
+            "name": "production",
+            "suite_config": "suite.json",
+            "occurrence_input": "failures.json",
+            "run_forecast": True,
+        },
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "evaluate",
+            "--config",
+            str(config_path),
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Health: healthy" in output
+    assert "Gate:" not in output
+    assert "RESULT: PASSED" in output
