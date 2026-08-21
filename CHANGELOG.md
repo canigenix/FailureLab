@@ -1,3 +1,20 @@
+## [0.12.0] - 2026-08-21
+
+### Added
+
+- Shared `occurrence_input` support for profile-driven evaluations
+- Centralized evaluation input resolution
+- Backward-compatible support for legacy `forecast_input` profiles
+- Explicit precedence for `occurrence_input` when both old and new fields are present
+- CLI end-to-end coverage for the new v0.12 evaluation profile format
+
+### Improved
+
+- Persistence, resolution, and forecasting can now share one occurrence-history input
+- Evaluation profiles are cleaner and easier to configure
+- Input path resolution is centralized instead of repeated across handlers
+- Existing v0.11 evaluation profiles remain compatible
+
 ## [0.11.0] - 2026-08-21
 
 ### Added

@@ -1,4 +1,4 @@
-import json
+﻿import json
 
 from failurelab.cli import main
 
@@ -252,7 +252,7 @@ def test_evaluate_cli_runs_all_analyses(
         {
             "name": "full-production",
             "suite_config": "suite.json",
-            "forecast_input": "failures.json",
+            "occurrence_input": "failures.json",
             "triage_input": "triage.json",
             "progression_input": "progression.json",
             "signature_input": "signature.json",
@@ -322,7 +322,7 @@ def test_evaluate_cli_exports_json(
         {
             "name": "production",
             "suite_config": "suite.json",
-            "forecast_input": "failures.json",
+            "occurrence_input": "failures.json",
             "run_forecast": True,
         },
     )
@@ -404,7 +404,7 @@ def test_evaluate_cli_exports_all_analyses(
         {
             "name": "full-production",
             "suite_config": "suite.json",
-            "forecast_input": "failures.json",
+            "occurrence_input": "failures.json",
             "triage_input": "triage.json",
             "progression_input": "progression.json",
             "signature_input": "signature.json",

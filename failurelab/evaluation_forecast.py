@@ -28,13 +28,19 @@ def run_profile_forecast(
             "Forecast analysis is not enabled."
         )
 
-    if not profile.forecast_input:
+    source_value = (
+        profile.occurrence_input
+        if profile.occurrence_input is not None
+        else profile.forecast_input
+    )
+
+    if source_value is None:
         raise ValueError(
-            "forecast_input is required to execute forecast analysis."
+            "An occurrence input is required to execute forecast analysis."
         )
 
     input_path = Path(
-        profile.forecast_input
+        source_value
     )
 
     if (

@@ -10,18 +10,20 @@ Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.11.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Version](https://img.shields.io/badge/version-0.12.0-green)](https://github.com/canigenix/FailureLab/releases)
 [![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
 
 ---
 
-## FailureLab v0.11.0
+## FailureLab v0.12.0
 
-Version 0.11.0 introduces **profile-driven evaluation orchestration**.
+Version 0.12.0 improves **profile-driven evaluation input handling**.
 
-FailureLab can now execute multiple failure-analysis workflows from a single evaluation profile and combine their results into one ordered evaluation report.
+Persistence, resolution, and forecasting can now share a single `occurrence_input`, giving related failure-history analyses one consistent input source.
 
-The `evaluate` workflow supports:
+v0.12.0 also preserves backward compatibility with v0.11 evaluation profiles that use `forecast_input`.
+
+The unified `evaluate` workflow supports:
 
 - Model progression analysis
 - Failure signature analysis
@@ -29,11 +31,12 @@ The `evaluate` workflow supports:
 - Failure persistence analysis
 - Failure resolution analysis
 - Failure forecasting
+- Shared occurrence-history input
 - Ordered multi-analysis execution
 - Combined PASS/FAIL evaluation results
 - JSON report export
 
-This turns FailureLab's individual analysis tools into a unified model-evaluation workflow suitable for repeatable validation and CI pipelines.
+This keeps FailureLab's multi-analysis evaluation workflow easier to configure while preserving compatibility with existing profiles.
 
 ---
 
@@ -72,6 +75,7 @@ FailureLab currently provides:
 - Failure resolution analysis
 - Failure trajectory forecasting
 - Unified profile-driven evaluation
+- Shared evaluation input resolution
 - Python and CLI integration
 
 ---
@@ -111,7 +115,7 @@ failurelab --version
 Expected:
 
 ```text
-failurelab 0.11.0
+failurelab 0.12.0
 ```
 
 ---
@@ -227,7 +231,7 @@ failurelab suite --config suite.json
 
 ## Unified Evaluation Profiles
 
-FailureLab v0.11.0 can orchestrate multiple analyses through a single evaluation profile.
+FailureLab v0.12.0 can orchestrate multiple analyses through a single evaluation profile.
 
 Example:
 
@@ -239,7 +243,7 @@ Example:
   "progression_input": "progression.json",
   "signature_input": "signature.json",
   "triage_input": "triage.json",
-  "forecast_input": "failures.json",
+  "occurrence_input": "failures.json",
 
   "run_progression": true,
   "run_signature": true,
@@ -249,6 +253,20 @@ Example:
   "run_forecast": true
 }
 ```
+
+`occurrence_input` provides shared failure-occurrence history for persistence, resolution, and forecasting during a unified evaluation.
+
+Profiles created for v0.11.0 that use:
+
+```json
+{
+  "forecast_input": "failures.json"
+}
+```
+
+remain supported.
+
+When both `occurrence_input` and `forecast_input` are supplied, `occurrence_input` takes precedence.
 
 Run the complete evaluation:
 
@@ -278,6 +296,33 @@ failurelab evaluate \
 ```
 
 This provides a single entry point for repeatable model-failure evaluation.
+
+---
+
+## Evaluation Input Resolution
+
+FailureLab v0.12.0 centralizes evaluation input-path resolution.
+
+Evaluation profiles can provide:
+
+- `progression_input`
+- `signature_input`
+- `triage_input`
+- `occurrence_input`
+
+Relative paths can be resolved against the evaluation profile location, allowing related evaluation files to remain together.
+
+The shared `occurrence_input` is used by analyses that operate on failure history:
+
+```text
+persistence
+resolution
+forecast
+```
+
+This avoids requiring the same failure-history source to be represented as a forecast-specific input when multiple analyses depend on it.
+
+For compatibility, `forecast_input` remains supported as a fallback for existing profiles.
 
 ---
 
@@ -382,6 +427,8 @@ failurelab persistence \
 
 Persistence reports track recurrence behavior, persistent failures, recurring failures, unresolved failures, and recurrence rates.
 
+During a unified `evaluate` workflow, persistence can consume the profile's shared `occurrence_input`.
+
 ---
 
 ## Failure Resolution
@@ -407,6 +454,8 @@ failurelab resolution \
 
 Together, persistence and resolution analysis show both **which failures keep returning** and **whether later model versions are actually fixing them**.
 
+During a unified `evaluate` workflow, resolution can consume the same shared `occurrence_input` used by persistence and forecasting.
+
 ---
 
 ## Failure Forecasting
@@ -421,6 +470,8 @@ failurelab forecast \
 ```
 
 Forecast results can be exported to JSON and can also participate in a unified `evaluate` run.
+
+In v0.12.0, unified evaluations prefer `occurrence_input` for forecasting. Existing profiles using `forecast_input` remain supported.
 
 ---
 
@@ -787,7 +838,7 @@ report.save_snapshot(
 )
 ```
 
-Structured JSON output is available across FailureLab's major analysis workflows, including the unified evaluation report introduced in v0.11.0.
+Structured JSON output is available across FailureLab's major analysis workflows, including unified profile-driven evaluation reports.
 
 ---
 
@@ -816,6 +867,8 @@ Public interfaces cover:
 - Failure persistence analysis
 - Failure resolution analysis
 - Failure forecasting
+- Evaluation profiles
+- Evaluation input resolution
 - JSON export
 
 This allows FailureLab's analysis capabilities to be integrated directly into Python evaluation pipelines.
@@ -830,7 +883,7 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-The automated suite covers FailureLab's core evaluation, stress tests, policies, reports, experiment tracking, model comparison, progression, failure signatures, triage, persistence, resolution, forecasting, CLI workflows, evaluation orchestration, and public Python API.
+The automated suite covers FailureLab's core evaluation, stress tests, policies, reports, experiment tracking, model comparison, progression, failure signatures, triage, persistence, resolution, forecasting, CLI workflows, evaluation orchestration, input resolution, backward compatibility, and public Python API.
 
 The complete suite should pass before a release is built.
 
@@ -851,11 +904,11 @@ Artifacts are generated under:
 dist/
 ```
 
-For v0.11.0:
+For v0.12.0:
 
 ```text
-failurelab-0.11.0-py3-none-any.whl
-failurelab-0.11.0.tar.gz
+failurelab-0.12.0-py3-none-any.whl
+failurelab-0.12.0.tar.gz
 ```
 
 ---
@@ -896,10 +949,10 @@ FailureLab is under active development.
 Current version:
 
 ```text
-0.11.0
+0.12.0
 ```
 
-v0.11.0 introduces unified evaluation profiles and the `failurelab evaluate` workflow, allowing progression, signature, triage, persistence, resolution, and forecast analysis to execute together and produce a combined evaluation result.
+v0.12.0 introduces shared evaluation occurrence input, allowing persistence, resolution, and forecasting to use one failure-history source while maintaining backward compatibility with v0.11 `forecast_input` profiles.
 
 ---
 

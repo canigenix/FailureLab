@@ -9,10 +9,17 @@ class EvaluationProfile:
 
     name: str
     suite_config: str
+
+    # v0.11 compatibility field.
     forecast_input: str | None = None
+
+    # v0.12 shared occurrence-history input.
+    occurrence_input: str | None = None
+
     triage_input: str | None = None
     progression_input: str | None = None
     signature_input: str | None = None
+
     run_progression: bool = False
     run_signature: bool = False
     run_triage: bool = False
@@ -50,13 +57,20 @@ def load_evaluation_profile(
         )
 
     return EvaluationProfile(
-        name=str(data["name"]),
+        name=str(
+            data["name"]
+        ),
         suite_config=str(
             data["suite_config"]
         ),
         forecast_input=(
             str(data["forecast_input"])
             if data.get("forecast_input") is not None
+            else None
+        ),
+        occurrence_input=(
+            str(data["occurrence_input"])
+            if data.get("occurrence_input") is not None
             else None
         ),
         triage_input=(

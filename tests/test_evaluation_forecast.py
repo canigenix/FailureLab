@@ -13,7 +13,7 @@ from failurelab.evaluation_report import (
 )
 
 
-def test_run_profile_forecast(
+def test_run_profile_forecast_with_occurrence_input(
     tmp_path,
 ):
     input_path = tmp_path / "failures.json"
@@ -49,7 +49,7 @@ def test_run_profile_forecast(
     profile = EvaluationProfile(
         name="production",
         suite_config="suite.json",
-        forecast_input="failures.json",
+        occurrence_input="failures.json",
         run_forecast=True,
     )
 
@@ -76,7 +76,105 @@ def test_run_profile_forecast(
     )
 
 
-def test_forecast_requires_input():
+def test_forecast_keeps_legacy_forecast_input(
+    tmp_path,
+):
+    input_path = tmp_path / "failures.json"
+
+    input_path.write_text(
+        json.dumps(
+            [
+                {
+                    "checkpoint": "v1",
+                    "failure_name": "blur",
+                    "priority_score": 0.80,
+                },
+                {
+                    "checkpoint": "v2",
+                    "failure_name": "blur",
+                    "priority_score": 0.60,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    profile = EvaluationProfile(
+        name="production",
+        suite_config="suite.json",
+        forecast_input="failures.json",
+        run_forecast=True,
+    )
+
+    result = run_profile_forecast(
+        profile,
+        base_path=tmp_path,
+    )
+
+    assert result.analysis == "forecast"
+    assert result.passed is True
+
+
+def test_occurrence_input_takes_priority(
+    tmp_path,
+):
+    new_input = tmp_path / "new.json"
+
+    new_input.write_text(
+        json.dumps(
+            [
+                {
+                    "checkpoint": "v1",
+                    "failure_name": "blur",
+                    "priority_score": 0.20,
+                },
+                {
+                    "checkpoint": "v2",
+                    "failure_name": "blur",
+                    "priority_score": 0.60,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    legacy_input = tmp_path / "legacy.json"
+
+    legacy_input.write_text(
+        json.dumps(
+            [
+                {
+                    "checkpoint": "v1",
+                    "failure_name": "blur",
+                    "priority_score": 0.80,
+                },
+                {
+                    "checkpoint": "v2",
+                    "failure_name": "blur",
+                    "priority_score": 0.60,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    profile = EvaluationProfile(
+        name="production",
+        suite_config="suite.json",
+        occurrence_input="new.json",
+        forecast_input="legacy.json",
+        run_forecast=True,
+    )
+
+    result = run_profile_forecast(
+        profile,
+        base_path=tmp_path,
+    )
+
+    assert "1 worsening" in result.message
+
+
+def test_forecast_requires_occurrence_input():
     profile = EvaluationProfile(
         name="production",
         suite_config="suite.json",
@@ -85,7 +183,7 @@ def test_forecast_requires_input():
 
     with pytest.raises(
         ValueError,
-        match="forecast_input",
+        match="occurrence input",
     ):
         run_profile_forecast(
             profile
@@ -96,7 +194,7 @@ def test_forecast_must_be_enabled():
     profile = EvaluationProfile(
         name="production",
         suite_config="suite.json",
-        forecast_input="failures.json",
+        occurrence_input="failures.json",
     )
 
     with pytest.raises(
@@ -125,7 +223,7 @@ def test_forecast_rejects_invalid_json_shape(
     profile = EvaluationProfile(
         name="production",
         suite_config="suite.json",
-        forecast_input="failures.json",
+        occurrence_input="failures.json",
         run_forecast=True,
     )
 
