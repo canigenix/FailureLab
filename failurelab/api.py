@@ -115,6 +115,41 @@ from failurelab.triage_comparison_policy import (
 from failurelab.triage_comparison_export import (
     export_triage_comparison_json,
 )
+from failurelab.failure_recurrence import (
+    FailureOccurrence,
+    FailureRecurrence,
+    analyze_failure_recurrence,
+)
+from failurelab.failure_persistence import (
+    FailurePersistence,
+    analyze_failure_persistence,
+)
+from failurelab.failure_persistence_report import (
+    FailurePersistenceReport,
+    build_failure_persistence_report,
+)
+from failurelab.failure_persistence_policy import (
+    FailurePersistencePolicyResult,
+    evaluate_failure_persistence_policy,
+)
+from failurelab.failure_persistence_export import (
+    export_failure_persistence_json,
+)
+from failurelab.failure_resolution import (
+    FailureResolution,
+    analyze_failure_resolution,
+)
+from failurelab.failure_resolution_report import (
+    FailureResolutionReport,
+    build_failure_resolution_report,
+)
+from failurelab.failure_resolution_policy import (
+    FailureResolutionPolicyResult,
+    evaluate_failure_resolution_policy,
+)
+from failurelab.failure_resolution_export import (
+    export_failure_resolution_json,
+)
 
 @dataclass
 class FailureLabReport:
@@ -855,6 +890,125 @@ class FailureLab:
 
         return export_triage_comparison_json(
             comparison,
+            path,
+            policy=policy,
+        )
+
+    @staticmethod
+    def failure_persistence(
+        occurrences,
+    ) -> FailurePersistenceReport:
+        """Analyze recurring failures across model checkpoints."""
+
+        failure_occurrences = [
+            occurrence
+            if isinstance(
+                occurrence,
+                FailureOccurrence,
+            )
+            else FailureOccurrence(
+                checkpoint=occurrence[0],
+                failure_name=occurrence[1],
+                priority_score=occurrence[2],
+            )
+            for occurrence in occurrences
+        ]
+
+        return build_failure_persistence_report(
+            failure_occurrences
+        )
+
+    @staticmethod
+    def failure_persistence_policy(
+        report: FailurePersistenceReport,
+        *,
+        max_persistent: int | None = None,
+        max_recurring: int | None = None,
+        max_unresolved: int | None = None,
+        max_recurrence_rate: float | None = None,
+    ) -> FailurePersistencePolicyResult:
+        """Evaluate failure persistence against policy limits."""
+
+        return evaluate_failure_persistence_policy(
+            report,
+            max_persistent=max_persistent,
+            max_recurring=max_recurring,
+            max_unresolved=max_unresolved,
+            max_recurrence_rate=max_recurrence_rate,
+        )
+
+    @staticmethod
+    def save_failure_persistence_json(
+        report: FailurePersistenceReport,
+        path,
+        *,
+        policy: FailurePersistencePolicyResult | None = None,
+    ) -> Path:
+        """Export failure persistence analysis as JSON."""
+
+        return export_failure_persistence_json(
+            report,
+            path,
+            policy=policy,
+        )
+
+    @staticmethod
+    def failure_resolution(
+        occurrences,
+        *,
+        tolerance: float = 0.0,
+    ) -> FailureResolutionReport:
+        """Analyze whether recurring failures are improving or worsening."""
+
+        failure_occurrences = [
+            occurrence
+            if isinstance(
+                occurrence,
+                FailureOccurrence,
+            )
+            else FailureOccurrence(
+                checkpoint=occurrence[0],
+                failure_name=occurrence[1],
+                priority_score=occurrence[2],
+            )
+            for occurrence in occurrences
+        ]
+
+        return build_failure_resolution_report(
+            failure_occurrences,
+            tolerance=tolerance,
+        )
+
+    @staticmethod
+    def failure_resolution_policy(
+        report: FailureResolutionReport,
+        *,
+        max_worsening: int | None = None,
+        max_unchanged: int | None = None,
+        max_unresolved: int | None = None,
+        max_score_regression: float | None = None,
+    ) -> FailureResolutionPolicyResult:
+        """Evaluate failure resolution against policy limits."""
+
+        return evaluate_failure_resolution_policy(
+            report,
+            max_worsening=max_worsening,
+            max_unchanged=max_unchanged,
+            max_unresolved=max_unresolved,
+            max_score_regression=max_score_regression,
+        )
+
+    @staticmethod
+    def save_failure_resolution_json(
+        report: FailureResolutionReport,
+        path,
+        *,
+        policy: FailureResolutionPolicyResult | None = None,
+    ) -> Path:
+        """Export failure resolution analysis as JSON."""
+
+        return export_failure_resolution_json(
+            report,
             path,
             policy=policy,
         )

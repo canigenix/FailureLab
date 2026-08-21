@@ -1,3 +1,36 @@
+## [0.9.0] - 2026-08-20
+
+### Added
+
+- Failure recurrence analysis across model checkpoints.
+- Isolated, recurring, and persistent failure classification.
+- Failure persistence reports with recurrence rates and unresolved-failure tracking.
+- Persistence policy gates for persistent, recurring, and unresolved failures.
+- Maximum recurrence-rate enforcement.
+- JSON export for persistence reports and policy results.
+- Public Python API for persistence workflows.
+- `persistence` CLI command.
+- Failure resolution analysis across checkpoints.
+- Improving, unchanged, worsening, and insufficient-history resolution classification.
+- Configurable tolerance for resolution analysis.
+- Resolution reports with unresolved-failure counts and worst-regression detection.
+- Resolution policy gates for worsening, unchanged, and unresolved failures.
+- Maximum failure-score regression enforcement.
+- JSON export for resolution reports and policy results.
+- Public Python API for resolution workflows.
+- `resolution` CLI command.
+
+### Improved
+
+- FailureLab can now distinguish failures that repeatedly survive across model versions from one-off failures.
+- Persistent weaknesses can be tracked to determine whether later model versions are actually resolving them.
+- CI workflows can reject releases when known failures persist, worsen, or exceed configured regression limits.
+
+### Validation
+
+- Full automated test suite passing.
+- Public v0.9.0 API imports verified.
+
 ## [0.8.0] - 2026-08-20
 
 ### Added

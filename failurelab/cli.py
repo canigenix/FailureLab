@@ -108,6 +108,29 @@ from failurelab.failure_triage_policy import (
     evaluate_failure_triage_policy,
 )
 
+from failurelab.failure_recurrence import (
+    FailureOccurrence,
+)
+from failurelab.failure_persistence_report import (
+    build_failure_persistence_report,
+)
+from failurelab.failure_persistence_policy import (
+    evaluate_failure_persistence_policy,
+)
+from failurelab.failure_persistence_export import (
+    export_failure_persistence_json,
+)
+
+from failurelab.failure_resolution_report import (
+    build_failure_resolution_report,
+)
+from failurelab.failure_resolution_policy import (
+    evaluate_failure_resolution_policy,
+)
+from failurelab.failure_resolution_export import (
+    export_failure_resolution_json,
+)
+
 from failurelab.triage_comparison import (
     compare_failure_triage,
 )
@@ -673,6 +696,107 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional output path for triage-comparison JSON.",
+    )
+
+    persistence_parser = subparsers.add_parser(
+        "persistence",
+        help="Analyze recurring failures across model checkpoints.",
+    )
+
+    persistence_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing failure occurrences.",
+    )
+
+    persistence_parser.add_argument(
+        "--max-persistent",
+        type=int,
+        default=None,
+        help="Optional maximum number of persistent failures.",
+    )
+
+    persistence_parser.add_argument(
+        "--max-recurring",
+        type=int,
+        default=None,
+        help="Optional maximum number of recurring failures.",
+    )
+
+    persistence_parser.add_argument(
+        "--max-unresolved",
+        type=int,
+        default=None,
+        help="Optional maximum number of unresolved failures.",
+    )
+
+    persistence_parser.add_argument(
+        "--max-recurrence-rate",
+        type=float,
+        default=None,
+        help="Optional maximum allowed recurrence rate.",
+    )
+
+    persistence_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for persistence JSON.",
+    )
+
+    resolution_parser = subparsers.add_parser(
+        "resolution",
+        help="Analyze whether recurring failures improve or worsen.",
+    )
+
+    resolution_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing failure occurrences.",
+    )
+
+    resolution_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.0,
+        help="Maximum score change treated as unchanged.",
+    )
+
+    resolution_parser.add_argument(
+        "--max-worsening",
+        type=int,
+        default=None,
+        help="Optional maximum number of worsening failures.",
+    )
+
+    resolution_parser.add_argument(
+        "--max-unchanged",
+        type=int,
+        default=None,
+        help="Optional maximum number of unchanged failures.",
+    )
+
+    resolution_parser.add_argument(
+        "--max-unresolved",
+        type=int,
+        default=None,
+        help="Optional maximum number of unresolved failures.",
+    )
+
+    resolution_parser.add_argument(
+        "--max-score-regression",
+        type=float,
+        default=None,
+        help="Optional maximum allowed failure-score regression.",
+    )
+
+    resolution_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for resolution JSON.",
     )
 
     return parser
@@ -2224,6 +2348,221 @@ def run_triage_compare(
     return 0
 
 
+def run_persistence(
+    input_path: Path,
+    max_persistent: int | None = None,
+    max_recurring: int | None = None,
+    max_unresolved: int | None = None,
+    max_recurrence_rate: float | None = None,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Persistence input must be a JSON list."
+        )
+
+    occurrences = [
+        FailureOccurrence(
+            checkpoint=row["checkpoint"],
+            failure_name=row["failure_name"],
+            priority_score=float(
+                row["priority_score"]
+            ),
+        )
+        for row in data
+    ]
+
+    report = build_failure_persistence_report(
+        occurrences
+    )
+
+    print(
+        f"Failures: {report.total_failures}"
+    )
+    print(
+        f"Persistent: {report.persistent_count}"
+    )
+    print(
+        f"Recurring: {report.recurring_count}"
+    )
+    print(
+        f"Isolated: {report.isolated_count}"
+    )
+    print(
+        f"Unresolved: {report.unresolved_count}"
+    )
+
+    if report.highest_persistence is not None:
+        print(
+            f"Highest persistence: "
+            f"{report.highest_persistence.failure_name} "
+            f"({report.highest_persistence.recurrence_rate:.2%}, "
+            f"{report.highest_persistence.level})"
+        )
+
+    policy = None
+
+    if (
+        max_persistent is not None
+        or max_recurring is not None
+        or max_unresolved is not None
+        or max_recurrence_rate is not None
+    ):
+        policy = evaluate_failure_persistence_policy(
+            report,
+            max_persistent=max_persistent,
+            max_recurring=max_recurring,
+            max_unresolved=max_unresolved,
+            max_recurrence_rate=max_recurrence_rate,
+        )
+
+        for violation in policy.violations:
+            print(
+                f"- {violation}"
+            )
+
+    if output_path is not None:
+        export_failure_persistence_json(
+            report,
+            output_path,
+            policy=policy,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy is not None and not policy.passed:
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
+
+
+def run_resolution(
+    input_path: Path,
+    tolerance: float = 0.0,
+    max_worsening: int | None = None,
+    max_unchanged: int | None = None,
+    max_unresolved: int | None = None,
+    max_score_regression: float | None = None,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Resolution input must be a JSON list."
+        )
+
+    occurrences = [
+        FailureOccurrence(
+            checkpoint=row["checkpoint"],
+            failure_name=row["failure_name"],
+            priority_score=float(
+                row["priority_score"]
+            ),
+        )
+        for row in data
+    ]
+
+    report = build_failure_resolution_report(
+        occurrences,
+        tolerance=tolerance,
+    )
+
+    print(
+        f"Failures: {report.total_failures}"
+    )
+    print(
+        f"Improving: {report.improving_count}"
+    )
+    print(
+        f"Unchanged: {report.unchanged_count}"
+    )
+    print(
+        f"Worsening: {report.worsening_count}"
+    )
+    print(
+        f"Insufficient history: "
+        f"{report.insufficient_history_count}"
+    )
+    print(
+        f"Unresolved: {report.unresolved_count}"
+    )
+
+    if report.worst_resolution is not None:
+        print(
+            f"Worst resolution: "
+            f"{report.worst_resolution.failure_name} "
+            f"({report.worst_resolution.score_delta:+.2%})"
+        )
+
+    policy = None
+
+    if (
+        max_worsening is not None
+        or max_unchanged is not None
+        or max_unresolved is not None
+        or max_score_regression is not None
+    ):
+        policy = evaluate_failure_resolution_policy(
+            report,
+            max_worsening=max_worsening,
+            max_unchanged=max_unchanged,
+            max_unresolved=max_unresolved,
+            max_score_regression=max_score_regression,
+        )
+
+        for violation in policy.violations:
+            print(
+                f"- {violation}"
+            )
+
+    if output_path is not None:
+        export_failure_resolution_json(
+            report,
+            output_path,
+            policy=policy,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if policy is not None and not policy.passed:
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -2356,6 +2695,27 @@ def main():
                     args.max_critical_increase
                 ),
                 max_score_increase=args.max_score_increase,
+                output_path=args.output,
+            )
+
+        if args.command == "persistence":
+            return run_persistence(
+                input_path=args.input,
+                max_persistent=args.max_persistent,
+                max_recurring=args.max_recurring,
+                max_unresolved=args.max_unresolved,
+                max_recurrence_rate=args.max_recurrence_rate,
+                output_path=args.output,
+            )
+
+        if args.command == "resolution":
+            return run_resolution(
+                input_path=args.input,
+                tolerance=args.tolerance,
+                max_worsening=args.max_worsening,
+                max_unchanged=args.max_unchanged,
+                max_unresolved=args.max_unresolved,
+                max_score_regression=args.max_score_regression,
                 output_path=args.output,
             )
 

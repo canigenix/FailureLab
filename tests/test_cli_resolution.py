@@ -1,0 +1,288 @@
+import json
+
+from failurelab.cli import main
+
+
+def write_resolution_file(
+    tmp_path,
+    rows,
+    name="resolution.json",
+):
+    path = tmp_path / name
+
+    path.write_text(
+        json.dumps(rows),
+        encoding="utf-8",
+    )
+
+    return path
+
+
+def test_resolution_cli_passes(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    input_path = write_resolution_file(
+        tmp_path,
+        [
+            {
+                "checkpoint": "v1",
+                "failure_name": "blur",
+                "priority_score": 0.80,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "blur",
+                "priority_score": 0.50,
+            },
+            {
+                "checkpoint": "v1",
+                "failure_name": "rotation",
+                "priority_score": 0.30,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "rotation",
+                "priority_score": 0.60,
+            },
+        ],
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Failures: 2" in output
+    assert "Improving: 1" in output
+    assert "Worsening: 1" in output
+    assert "Worst resolution: rotation" in output
+    assert "RESULT: PASSED" in output
+
+
+def test_resolution_cli_respects_tolerance(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    input_path = write_resolution_file(
+        tmp_path,
+        [
+            {
+                "checkpoint": "v1",
+                "failure_name": "blur",
+                "priority_score": 0.50,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "blur",
+                "priority_score": 0.505,
+            },
+        ],
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+            "--tolerance",
+            "0.01",
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "Unchanged: 1" in output
+    assert "Worsening: 0" in output
+
+
+def test_resolution_cli_policy_failure(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    input_path = write_resolution_file(
+        tmp_path,
+        [
+            {
+                "checkpoint": "v1",
+                "failure_name": "rotation",
+                "priority_score": 0.30,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "rotation",
+                "priority_score": 0.70,
+            },
+        ],
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+            "--max-worsening",
+            "0",
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert "Worsening failures exceeded limit" in output
+    assert "RESULT: FAILED" in output
+
+
+def test_resolution_cli_score_regression_policy(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    input_path = write_resolution_file(
+        tmp_path,
+        [
+            {
+                "checkpoint": "v1",
+                "failure_name": "rotation",
+                "priority_score": 0.30,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "rotation",
+                "priority_score": 0.70,
+            },
+        ],
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+            "--max-score-regression",
+            "0.20",
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert "Failure score regression exceeded limit" in output
+
+
+def test_resolution_cli_exports_json(
+    tmp_path,
+    monkeypatch,
+):
+    input_path = write_resolution_file(
+        tmp_path,
+        [
+            {
+                "checkpoint": "v1",
+                "failure_name": "blur",
+                "priority_score": 0.80,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "blur",
+                "priority_score": 0.50,
+            },
+            {
+                "checkpoint": "v1",
+                "failure_name": "rotation",
+                "priority_score": 0.30,
+            },
+            {
+                "checkpoint": "v2",
+                "failure_name": "rotation",
+                "priority_score": 0.60,
+            },
+        ],
+    )
+
+    output_path = tmp_path / "resolution-report.json"
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    result = main()
+
+    assert result == 0
+    assert output_path.exists()
+
+    data = json.loads(
+        output_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert data["total_failures"] == 2
+    assert data["improving_count"] == 1
+    assert data["worsening_count"] == 1
+    assert data["worst_resolution"]["failure_name"] == "rotation"
+
+
+def test_resolution_cli_rejects_invalid_input(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    input_path = tmp_path / "bad-resolution.json"
+
+    input_path.write_text(
+        json.dumps(
+            {
+                "checkpoint": "v1",
+                "failure_name": "blur",
+                "priority_score": 0.80,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "resolution",
+            "--input",
+            str(input_path),
+        ],
+    )
+
+    result = main()
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "Resolution input must be a JSON list" in captured.err

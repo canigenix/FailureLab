@@ -251,6 +251,47 @@ from failurelab.triage_comparison_export import (
     export_triage_comparison_json,
     triage_comparison_to_dict,
 )
+from failurelab.failure_recurrence import (
+    FailureOccurrence,
+    FailureRecurrence,
+    analyze_failure_recurrence,
+)
+from failurelab.failure_persistence import (
+    FailurePersistence,
+    PersistenceLevel,
+    analyze_failure_persistence,
+    classify_persistence,
+)
+from failurelab.failure_persistence_report import (
+    FailurePersistenceReport,
+    build_failure_persistence_report,
+)
+from failurelab.failure_persistence_policy import (
+    FailurePersistencePolicyResult,
+    evaluate_failure_persistence_policy,
+)
+from failurelab.failure_persistence_export import (
+    export_failure_persistence_json,
+    failure_persistence_to_dict,
+)
+from failurelab.failure_resolution import (
+    FailureResolution,
+    ResolutionStatus,
+    analyze_failure_resolution,
+    classify_resolution_status,
+)
+from failurelab.failure_resolution_report import (
+    FailureResolutionReport,
+    build_failure_resolution_report,
+)
+from failurelab.failure_resolution_policy import (
+    FailureResolutionPolicyResult,
+    evaluate_failure_resolution_policy,
+)
+from failurelab.failure_resolution_export import (
+    export_failure_resolution_json,
+    failure_resolution_to_dict,
+)
 
 __all__ = [
     "FailureLab",
@@ -401,6 +442,19 @@ __all__ = [
 "evaluate_triage_comparison_policy",
 "export_triage_comparison_json",
 "triage_comparison_to_dict",
+"FailureOccurrence",
+"FailureRecurrence",
+"analyze_failure_recurrence",
+"FailurePersistence",
+"PersistenceLevel",
+"analyze_failure_persistence",
+"classify_persistence",
+"FailurePersistenceReport",
+"build_failure_persistence_report",
+"FailurePersistencePolicyResult",
+"evaluate_failure_persistence_policy",
+"export_failure_persistence_json",
+"failure_persistence_to_dict",
 ]
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
