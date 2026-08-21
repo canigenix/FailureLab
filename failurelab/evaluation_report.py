@@ -43,6 +43,24 @@ class EvaluationReport:
             for step in self.steps
         )
 
+    @property
+    def intelligence(self):
+        """Return high-level intelligence for this evaluation."""
+
+        from failurelab.evaluation_intelligence import (
+            build_evaluation_intelligence,
+        )
+
+        return build_evaluation_intelligence(
+            self.steps
+        )
+
+    @property
+    def health_status(self) -> str:
+        """Return the overall evaluation health status."""
+
+        return self.intelligence.health.status
+
 
 def build_evaluation_report(
     plan: EvaluationPlan,
@@ -53,6 +71,7 @@ def build_evaluation_report(
     results = tuple(step_results)
 
     expected = plan.analyses
+
     actual = tuple(
         result.analysis
         for result in results

@@ -1,3 +1,23 @@
+## [0.13.0] - 2026-08-21
+
+### Added
+
+- High-level evaluation intelligence for unified evaluation runs
+- Evaluation summaries across enabled analyses
+- Overall evaluation health classification
+- Health states: `healthy`, `watch`, `at-risk`, and `critical`
+- Failure-ratio calculation across evaluation analyses
+- Ordered reporting of failed analysis areas
+- Evaluation intelligence in JSON report exports
+- Health summaries in the `failurelab evaluate` CLI output
+
+### Improved
+
+- Unified evaluations now provide an overall interpretation instead of only individual analysis results
+- Evaluation reports expose combined health information programmatically
+- JSON exports include health status, failure ratio, failed analyses, and health messages
+- CLI evaluation output provides an immediate model-health summary
+
 ## [0.12.0] - 2026-08-21
 
 ### Added

@@ -10,33 +10,35 @@ Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.12.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Version](https://img.shields.io/badge/version-0.13.0-green)](https://github.com/canigenix/FailureLab/releases)
 [![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
 
 ---
 
-## FailureLab v0.12.0
+## FailureLab v0.13.0
 
-Version 0.12.0 improves **profile-driven evaluation input handling**.
+Version 0.13.0 adds **evaluation intelligence** to unified FailureLab evaluations.
 
-Persistence, resolution, and forecasting can now share a single `occurrence_input`, giving related failure-history analyses one consistent input source.
+Instead of only reporting whether each enabled analysis passed or failed, FailureLab can now summarize the complete evaluation and classify overall model health.
 
-v0.12.0 also preserves backward compatibility with v0.11 evaluation profiles that use `forecast_input`.
+Evaluation health states include:
 
-The unified `evaluate` workflow supports:
+- `healthy`
+- `watch`
+- `at-risk`
+- `critical`
 
-- Model progression analysis
-- Failure signature analysis
-- Failure triage
-- Failure persistence analysis
-- Failure resolution analysis
-- Failure forecasting
-- Shared occurrence-history input
-- Ordered multi-analysis execution
-- Combined PASS/FAIL evaluation results
-- JSON report export
+The evaluation intelligence layer tracks:
 
-This keeps FailureLab's multi-analysis evaluation workflow easier to configure while preserving compatibility with existing profiles.
+- Total analyses executed
+- Passed analyses
+- Failed analyses
+- Failed analysis names
+- Failure ratio
+- Overall evaluation health
+- Human-readable health summary
+
+The `evaluate` CLI now prints this health summary directly, and JSON evaluation reports include the same structured intelligence.
 
 ---
 
@@ -64,7 +66,6 @@ FailureLab currently provides:
 - HTML and JSON reports
 - Reusable robustness snapshots
 - Baseline-vs-candidate model comparison
-- Configurable regression tolerance
 - Experiment history and trend tracking
 - Batch experiment execution
 - Model checkpoint progression analysis
@@ -76,6 +77,8 @@ FailureLab currently provides:
 - Failure trajectory forecasting
 - Unified profile-driven evaluation
 - Shared evaluation input resolution
+- Evaluation intelligence
+- Overall model-health classification
 - Python and CLI integration
 
 ---
@@ -115,7 +118,7 @@ failurelab --version
 Expected:
 
 ```text
-failurelab 0.12.0
+failurelab 0.13.0
 ```
 
 ---
@@ -198,29 +201,6 @@ Example:
 }
 ```
 
-Load a suite from Python:
-
-```python
-from failurelab import (
-    ConfiguredSuiteRunner,
-    load_suite_config,
-)
-
-config = load_suite_config("suite.json")
-
-runner = ConfiguredSuiteRunner(
-    predict_proba
-)
-
-result = runner.run(
-    dataset=dataset,
-    config=config,
-)
-
-print(result.status)
-print(result.worst_drop)
-```
-
 CLI:
 
 ```bash
@@ -231,7 +211,7 @@ failurelab suite --config suite.json
 
 ## Unified Evaluation Profiles
 
-FailureLab v0.12.0 can orchestrate multiple analyses through a single evaluation profile.
+FailureLab can orchestrate multiple analyses through a single evaluation profile.
 
 Example:
 
@@ -254,7 +234,7 @@ Example:
 }
 ```
 
-`occurrence_input` provides shared failure-occurrence history for persistence, resolution, and forecasting during a unified evaluation.
+`occurrence_input` provides shared failure-occurrence history for persistence, resolution, and forecasting.
 
 Profiles created for v0.11.0 that use:
 
@@ -285,8 +265,6 @@ resolution
 forecast
 ```
 
-A complete evaluation produces an overall PASS/FAIL result together with the result of each enabled analysis.
-
 Export the combined report:
 
 ```bash
@@ -295,13 +273,96 @@ failurelab evaluate \
   --output evaluation-report.json
 ```
 
-This provides a single entry point for repeatable model-failure evaluation.
+---
+
+## Evaluation Intelligence
+
+FailureLab v0.13.0 adds high-level interpretation to unified evaluations.
+
+Each evaluation report can now summarize:
+
+```text
+total analyses
+passed analyses
+failed analyses
+failed analysis names
+failure ratio
+overall health
+```
+
+Health classification is based on the fraction of enabled analyses that fail.
+
+Possible health states:
+
+```text
+healthy
+watch
+at-risk
+critical
+```
+
+A healthy run may produce CLI output similar to:
+
+```text
+Health: healthy
+Failed analyses: 0/6
+Failure ratio: 0.00%
+All enabled analyses passed.
+```
+
+A degraded evaluation can identify the specific analysis areas that failed.
+
+The same information is available programmatically through the evaluation report:
+
+```python
+intelligence = report.intelligence
+
+print(intelligence.health.status)
+print(intelligence.health.failure_ratio)
+print(intelligence.summary.failed_analysis_names)
+```
+
+The report also exposes:
+
+```python
+print(report.health_status)
+```
+
+This allows FailureLab to provide both individual analysis results and a high-level interpretation of the complete evaluation.
+
+---
+
+## Evaluation JSON Reports
+
+Unified evaluation JSON reports now include evaluation intelligence.
+
+Example structure:
+
+```json
+{
+  "profile_name": "production",
+  "suite_config": "suite.json",
+  "passed": false,
+  "passed_count": 4,
+  "failed_count": 2,
+  "health_status": "at-risk",
+  "failure_ratio": 0.3333333333333333,
+  "failed_analyses": [
+    "triage",
+    "forecast"
+  ],
+  "health_message": "Multiple evaluation areas require attention.",
+  "steps": []
+}
+```
+
+This makes evaluation intelligence available to CI systems, reporting tools, and downstream automation.
 
 ---
 
 ## Evaluation Input Resolution
 
-FailureLab v0.12.0 centralizes evaluation input-path resolution.
+FailureLab centralizes evaluation input-path resolution.
 
 Evaluation profiles can provide:
 
@@ -310,17 +371,13 @@ Evaluation profiles can provide:
 - `triage_input`
 - `occurrence_input`
 
-Relative paths can be resolved against the evaluation profile location, allowing related evaluation files to remain together.
-
-The shared `occurrence_input` is used by analyses that operate on failure history:
+The shared `occurrence_input` is used by:
 
 ```text
 persistence
 resolution
 forecast
 ```
-
-This avoids requiring the same failure-history source to be represented as a forecast-specific input when multiple analyses depend on it.
 
 For compatibility, `forecast_input` remains supported as a fallback for existing profiles.
 
@@ -330,7 +387,7 @@ For compatibility, `forecast_input` remains supported as a fallback for existing
 
 FailureLab can track failure-rate changes across model checkpoints and classify transitions as improved, stable, or regressed.
 
-Across checkpoint history, the overall trend can be classified as:
+Possible overall trends include:
 
 - Improving
 - Stable
@@ -360,7 +417,7 @@ Signatures classify weaknesses as:
 failurelab signature --input signature.json
 ```
 
-Signature history can track how the model's failure fingerprint changes across checkpoints:
+Signature history:
 
 ```bash
 failurelab signature-history --input history.json
@@ -396,7 +453,7 @@ Run triage:
 failurelab triage --input triage.json
 ```
 
-FailureLab can also compare triage results between model versions:
+Compare triage between model versions:
 
 ```bash
 failurelab triage-compare \
@@ -418,16 +475,12 @@ recurring
 persistent
 ```
 
-Run persistence analysis:
-
 ```bash
 failurelab persistence \
   --input persistence.json
 ```
 
 Persistence reports track recurrence behavior, persistent failures, recurring failures, unresolved failures, and recurrence rates.
-
-During a unified `evaluate` workflow, persistence can consume the profile's shared `occurrence_input`.
 
 ---
 
@@ -444,8 +497,6 @@ worsening
 insufficient_history
 ```
 
-Run resolution analysis:
-
 ```bash
 failurelab resolution \
   --input resolution.json \
@@ -454,32 +505,24 @@ failurelab resolution \
 
 Together, persistence and resolution analysis show both **which failures keep returning** and **whether later model versions are actually fixing them**.
 
-During a unified `evaluate` workflow, resolution can consume the same shared `occurrence_input` used by persistence and forecasting.
-
 ---
 
 ## Failure Forecasting
 
 FailureLab can use failure-score history to estimate the likely direction of a weakness at the next checkpoint.
 
-Forecasting builds on recurrence and resolution history to identify failures that may continue to present risk.
-
 ```bash
 failurelab forecast \
   --input failures.json
 ```
 
-Forecast results can be exported to JSON and can also participate in a unified `evaluate` run.
-
-In v0.12.0, unified evaluations prefer `occurrence_input` for forecasting. Existing profiles using `forecast_input` remain supported.
+Forecast results can be exported to JSON and can participate in unified evaluation runs.
 
 ---
 
 ## Cross-Stress Vulnerability Analysis
 
 FailureLab can identify classes that repeatedly fail across multiple stress conditions.
-
-This helps distinguish weaknesses isolated to one perturbation from classes that are systematically fragile across several stresses.
 
 ```bash
 failurelab cross-stress --help
@@ -489,7 +532,7 @@ failurelab cross-stress --help
 
 ## Sample-Level Failure Analysis
 
-FailureLab can identify individual samples that repeatedly fail across different stress conditions.
+FailureLab can identify individual samples that repeatedly fail across stress conditions.
 
 Sample analysis tracks:
 
@@ -507,9 +550,7 @@ failurelab sample-report --help
 
 ## Failure Correlation and Clustering
 
-FailureLab can measure whether different stresses tend to fail on the same samples.
-
-Pairwise correlations help reveal perturbations that expose related weaknesses. These relationships can then be grouped into larger failure clusters.
+FailureLab can measure whether different stresses tend to fail on the same samples and group related failure patterns into clusters.
 
 ```bash
 failurelab correlation --help
@@ -522,22 +563,20 @@ failurelab clusters --help
 
 FailureLab supports configurable policies that turn analysis results into automated PASS/FAIL gates.
 
-Policies can enforce:
+Policies can cover:
 
 - Global robustness thresholds
 - Stress-specific thresholds
-- Warning and failure severity levels
 - Class-level thresholds
-- Minimum sample requirements
-- Minimum class coverage
-- Sample-level systemic-failure limits
+- Sample-level limits
 - Correlation limits
-- Failure-cluster limits
+- Cluster limits
 - Progression requirements
 - Signature requirements
 - Triage limits
 - Persistence limits
 - Resolution limits
+- Forecast limits
 
 ```bash
 failurelab policy-evaluate --help
@@ -564,8 +603,6 @@ output = runner.run(
     model_id="resnet18-v3",
 )
 ```
-
-Each run can record its suite, model ID, run ID, timestamp, status, worst stress, worst degradation, and configured threshold.
 
 ---
 
@@ -596,12 +633,6 @@ regressed
 insufficient_history
 ```
 
-CLI:
-
-```bash
-failurelab history --input history.json --suite production-vision
-```
-
 ---
 
 ## Batch Experiments
@@ -623,14 +654,6 @@ experiments = [
         result_path="model-a.json",
         history_path="history.json",
     ),
-    BatchExperiment(
-        model_id="model-b",
-        predict_proba_fn=model_b_predict,
-        dataset=dataset,
-        config=config,
-        result_path="model-b.json",
-        history_path="history.json",
-    ),
 ]
 
 runner = BatchExperimentRunner()
@@ -638,31 +661,23 @@ runner = BatchExperimentRunner()
 output = runner.run(
     experiments
 )
-
-output.save_json(
-    "batch-summary.json"
-)
 ```
 
 ---
 
 ## Failure Envelopes
 
-A single perturbation level does not show when degradation begins.
-
-FailureLab can sweep increasingly severe conditions:
+FailureLab can sweep increasingly severe perturbations to identify where failure begins.
 
 ```python
 blur_sweep = lab.sweep("blur")
 ```
 
-Or evaluate every built-in sweep:
+Or:
 
 ```python
 envelope = lab.sweep_all()
 ```
-
-The first severity level where the configured failure criterion is crossed becomes part of the model's failure envelope.
 
 ---
 
@@ -683,7 +698,7 @@ custom_test = CustomStressTest(
 
 ## Visualization
 
-Generate robustness degradation charts programmatically:
+Generate robustness degradation charts:
 
 ```python
 from failurelab.visualization import plot_robustness_drops
@@ -694,15 +709,13 @@ plot_robustness_drops(
 )
 ```
 
-Or from the CLI:
+CLI:
 
 ```bash
 failurelab visualize \
   --input weaknesses.json \
   --output robustness.png
 ```
-
-Visualization uses a headless backend for CI, containers, servers, and terminal environments.
 
 ---
 
@@ -722,8 +735,6 @@ print(comparison.summary())
 
 comparison.require_pass()
 ```
-
-FailureLab evaluates failure-threshold regressions and worst-case degradation regressions.
 
 ---
 
@@ -765,7 +776,7 @@ Inspect any command with:
 failurelab <command> --help
 ```
 
-CLI exit codes are suitable for automated pipelines:
+CLI exit codes:
 
 ```text
 0 = passed
@@ -810,7 +821,7 @@ jobs:
             --output evaluation-report.json
 ```
 
-A detected regression or policy violation can return a non-zero exit code and block the pipeline.
+Evaluation JSON can then be consumed by downstream CI or reporting steps.
 
 ---
 
@@ -818,27 +829,16 @@ A detected regression or policy violation can return a non-zero exit code and bl
 
 FailureLab supports structured output across its robustness and failure-analysis workflows.
 
-Core reports can be exported as HTML or JSON:
+Core reports can be exported as HTML or JSON.
 
-```python
-report.save_html(
-    "failurelab_report.html"
-)
+Unified evaluation reports include:
 
-report.save_json(
-    "failurelab_report.json"
-)
-```
-
-A report with a failure envelope can also be saved as a reusable robustness snapshot:
-
-```python
-report.save_snapshot(
-    "model_snapshot.json"
-)
-```
-
-Structured JSON output is available across FailureLab's major analysis workflows, including unified profile-driven evaluation reports.
+- Overall PASS/FAIL result
+- Per-analysis results
+- Health status
+- Failure ratio
+- Failed analysis names
+- Health summary message
 
 ---
 
@@ -864,14 +864,15 @@ Public interfaces cover:
 - Failure priority scoring
 - Failure triage
 - Remediation recommendations
-- Failure persistence analysis
-- Failure resolution analysis
+- Failure persistence
+- Failure resolution
 - Failure forecasting
 - Evaluation profiles
 - Evaluation input resolution
+- Evaluation summaries
+- Evaluation health classification
+- Evaluation intelligence
 - JSON export
-
-This allows FailureLab's analysis capabilities to be integrated directly into Python evaluation pipelines.
 
 ---
 
@@ -883,7 +884,7 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-The automated suite covers FailureLab's core evaluation, stress tests, policies, reports, experiment tracking, model comparison, progression, failure signatures, triage, persistence, resolution, forecasting, CLI workflows, evaluation orchestration, input resolution, backward compatibility, and public Python API.
+The automated suite covers FailureLab's core evaluation, stress tests, policies, reports, experiment tracking, model comparison, progression, failure signatures, triage, persistence, resolution, forecasting, evaluation orchestration, evaluation intelligence, CLI workflows, backward compatibility, and the public Python API.
 
 The complete suite should pass before a release is built.
 
@@ -904,11 +905,11 @@ Artifacts are generated under:
 dist/
 ```
 
-For v0.12.0:
+For v0.13.0:
 
 ```text
-failurelab-0.12.0-py3-none-any.whl
-failurelab-0.12.0.tar.gz
+failurelab-0.13.0-py3-none-any.whl
+failurelab-0.13.0.tar.gz
 ```
 
 ---
@@ -919,7 +920,7 @@ FailureLab currently focuses on image-classification robustness.
 
 Its stress tests measure model behavior under configured image perturbations. FailureLab does not attempt to model every real-world distribution shift or establish that a model is safe for a particular deployment.
 
-Robustness scores, thresholds, correlations, clusters, priority scores, persistence metrics, resolution trends, forecasts, and policy gates should be treated as engineering diagnostics under the configured evaluation.
+Robustness scores, thresholds, correlations, priority scores, health classifications, forecasts, and policy gates should be treated as engineering diagnostics under the configured evaluation.
 
 ---
 
@@ -934,11 +935,11 @@ FailureLab is built around a few practical questions:
 5. Which stresses expose the same underlying weaknesses?
 6. Which failures should be fixed first?
 7. Which failures keep surviving across model versions?
-8. Are those persistent failures actually improving?
-9. What failures are likely to remain risky at the next checkpoint?
-10. Can the complete failure picture be evaluated consistently in one run?
+8. Are persistent failures improving?
+9. Which failures are likely to remain risky?
+10. What does the complete evaluation say about the model overall?
 
-The goal is to make robustness testing, failure-pattern discovery, failure-resolution tracking, projected-risk analysis, and repeatable model evaluation part of normal model development rather than something discovered only after deployment.
+The goal is to make robustness testing, failure-pattern discovery, failure-resolution tracking, projected-risk analysis, and model-health evaluation part of normal model development.
 
 ---
 
@@ -949,10 +950,10 @@ FailureLab is under active development.
 Current version:
 
 ```text
-0.12.0
+0.13.0
 ```
 
-v0.12.0 introduces shared evaluation occurrence input, allowing persistence, resolution, and forecasting to use one failure-history source while maintaining backward compatibility with v0.11 `forecast_input` profiles.
+v0.13.0 adds evaluation intelligence, including high-level evaluation summaries, failure ratios, failed-analysis tracking, overall health classification, enriched JSON reports, and health summaries in the unified `evaluate` CLI workflow.
 
 ---
 

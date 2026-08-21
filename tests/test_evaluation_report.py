@@ -153,3 +153,85 @@ def test_report_rejects_missing_result():
                 ),
             ],
         )
+
+
+def test_report_exposes_healthy_intelligence():
+    report = EvaluationReport(
+        profile_name="production",
+        suite_config="suite.json",
+        steps=(
+            EvaluationStepResult(
+                analysis="progression",
+                passed=True,
+            ),
+            EvaluationStepResult(
+                analysis="signature",
+                passed=True,
+            ),
+            EvaluationStepResult(
+                analysis="forecast",
+                passed=True,
+            ),
+        ),
+    )
+
+    intelligence = report.intelligence
+
+    assert (
+        intelligence.summary.total_analyses
+        == 3
+    )
+
+    assert (
+        intelligence.summary.failed_analyses
+        == 0
+    )
+
+    assert (
+        intelligence.health.status
+        == "healthy"
+    )
+
+    assert report.health_status == "healthy"
+
+
+def test_report_exposes_failed_intelligence():
+    report = EvaluationReport(
+        profile_name="production",
+        suite_config="suite.json",
+        steps=(
+            EvaluationStepResult(
+                analysis="progression",
+                passed=False,
+            ),
+            EvaluationStepResult(
+                analysis="signature",
+                passed=True,
+            ),
+            EvaluationStepResult(
+                analysis="triage",
+                passed=False,
+            ),
+            EvaluationStepResult(
+                analysis="forecast",
+                passed=True,
+            ),
+        ),
+    )
+
+    intelligence = report.intelligence
+
+    assert (
+        intelligence.summary.failed_analysis_names
+        == (
+            "progression",
+            "triage",
+        )
+    )
+
+    assert (
+        intelligence.health.status
+        == "at-risk"
+    )
+
+    assert report.health_status == "at-risk"

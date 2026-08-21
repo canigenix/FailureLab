@@ -11,12 +11,20 @@ def evaluation_report_to_dict(
 ) -> dict:
     """Convert an evaluation report to a JSON-safe dictionary."""
 
+    intelligence = report.intelligence
+
     return {
         "profile_name": report.profile_name,
         "suite_config": report.suite_config,
         "passed": report.passed,
         "passed_count": report.passed_count,
         "failed_count": report.failed_count,
+        "health_status": intelligence.health.status,
+        "failure_ratio": intelligence.health.failure_ratio,
+        "failed_analyses": list(
+            intelligence.summary.failed_analysis_names
+        ),
+        "health_message": intelligence.health.message,
         "steps": [
             {
                 "analysis": step.analysis,

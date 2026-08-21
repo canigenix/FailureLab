@@ -570,3 +570,46 @@ def test_evaluate_cli_invalid_json_shape(
         "Evaluation profile must be a JSON object"
         in captured.err
     )
+
+def test_evaluate_cli_prints_health_summary(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    write_occurrence_input(
+        tmp_path
+    )
+
+    config_path = write_profile(
+        tmp_path,
+        {
+            "name": "production",
+            "suite_config": "suite.json",
+            "occurrence_input": "failures.json",
+            "run_forecast": True,
+        },
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "failurelab",
+            "evaluate",
+            "--config",
+            str(config_path),
+        ],
+    )
+
+    result = main()
+    output = capsys.readouterr().out
+
+    assert result == 0
+
+    assert "Health: healthy" in output
+    assert "Failed analyses: 0/1" in output
+    assert "Failure ratio: 0.00%" in output
+
+    assert (
+        "All enabled analyses passed."
+        in output
+    )

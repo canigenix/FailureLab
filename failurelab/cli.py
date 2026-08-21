@@ -2828,11 +2828,41 @@ def run_evaluate(
                 f"{step.analysis}: {status}"
             )
 
+    intelligence = report.intelligence
+
+    print()
+    print(
+        f"Health: {intelligence.health.status}"
+    )
+    print(
+        f"Failed analyses: "
+        f"{intelligence.summary.failed_analyses}"
+        f"/{intelligence.summary.total_analyses}"
+    )
+    print(
+        f"Failure ratio: "
+        f"{intelligence.health.failure_ratio:.2%}"
+    )
+    print(
+        intelligence.health.message
+    )
+
+    if (
+        intelligence.summary.failed_analysis_names
+    ):
+        print(
+            "Failed areas: "
+            + ", ".join(
+                intelligence.summary.failed_analysis_names
+            )
+        )
+
     if output_path is not None:
         export_evaluation_json(
             report,
             output_path,
         )
+
         print(
             f"Report saved to {output_path}"
         )

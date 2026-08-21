@@ -39,6 +39,19 @@ def test_evaluation_report_to_dict():
     assert data["passed"] is False
     assert data["passed_count"] == 1
     assert data["failed_count"] == 1
+
+    assert data["health_status"] == "at-risk"
+    assert data["failure_ratio"] == 0.5
+
+    assert data["failed_analyses"] == [
+        "forecast",
+    ]
+
+    assert (
+        data["health_message"]
+        == "Multiple evaluation areas require attention."
+    )
+
     assert len(data["steps"]) == 2
 
     assert (
@@ -74,6 +87,7 @@ def test_export_evaluation_json(
     assert data["profile_name"] == "production"
     assert data["passed"] is False
     assert data["failed_count"] == 1
+    assert data["health_status"] == "at-risk"
 
 
 def test_export_preserves_step_messages(
@@ -133,3 +147,55 @@ def test_export_passing_report(
     assert data["passed"] is True
     assert data["passed_count"] == 1
     assert data["failed_count"] == 0
+    assert data["health_status"] == "healthy"
+    assert data["failure_ratio"] == 0.0
+    assert data["failed_analyses"] == []
+
+
+def test_export_critical_health(
+    tmp_path,
+):
+    report = EvaluationReport(
+        profile_name="critical",
+        suite_config="suite.json",
+        steps=(
+            EvaluationStepResult(
+                analysis="progression",
+                passed=False,
+            ),
+            EvaluationStepResult(
+                analysis="signature",
+                passed=False,
+            ),
+            EvaluationStepResult(
+                analysis="triage",
+                passed=False,
+            ),
+            EvaluationStepResult(
+                analysis="forecast",
+                passed=True,
+            ),
+        ),
+    )
+
+    path = tmp_path / "critical.json"
+
+    export_evaluation_json(
+        report,
+        path,
+    )
+
+    data = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert data["health_status"] == "critical"
+    assert data["failure_ratio"] == 0.75
+
+    assert data["failed_analyses"] == [
+        "progression",
+        "signature",
+        "triage",
+    ]
