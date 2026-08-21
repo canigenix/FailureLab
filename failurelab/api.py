@@ -90,6 +90,31 @@ from failurelab.signature_history_policy import (
 from failurelab.signature_history_export import (
     export_signature_history_json,
 )
+from failurelab.failure_priority import (
+    FailurePrioritySignal,
+)
+from failurelab.failure_triage import (
+    FailureTriageReport,
+    build_failure_triage_report,
+)
+from failurelab.failure_triage_export import (
+    export_failure_triage_json,
+)
+from failurelab.failure_triage_policy import (
+    FailureTriagePolicyResult,
+    evaluate_failure_triage_policy,
+)
+from failurelab.triage_comparison import (
+    FailureTriageComparison,
+    compare_failure_triage,
+)
+from failurelab.triage_comparison_policy import (
+    TriageComparisonPolicyResult,
+    evaluate_triage_comparison_policy,
+)
+from failurelab.triage_comparison_export import (
+    export_triage_comparison_json,
+)
 
 @dataclass
 class FailureLabReport:
@@ -720,6 +745,116 @@ class FailureLab:
 
         return export_signature_history_json(
             report,
+            path,
+            policy=policy,
+        )
+
+    @staticmethod
+    def failure_triage(
+        signals,
+    ) -> FailureTriageReport:
+        """Build a prioritized failure triage report."""
+
+        priority_signals = [
+            signal
+            if isinstance(signal, FailurePrioritySignal)
+            else FailurePrioritySignal(
+                name=signal[0],
+                failure_rate=signal[1],
+                prediction_flip_rate=signal[2],
+                affected_fraction=signal[3],
+                severity_weight=(
+                    signal[4]
+                    if len(signal) > 4
+                    else 1.0
+                ),
+            )
+            for signal in signals
+        ]
+
+        return build_failure_triage_report(
+            priority_signals
+        )
+
+    @staticmethod
+    def failure_triage_policy(
+        report: FailureTriageReport,
+        *,
+        max_critical: int = 0,
+        max_high: int | None = None,
+        max_actionable: int | None = None,
+        max_priority_score: float | None = None,
+    ) -> FailureTriagePolicyResult:
+        """Evaluate a failure triage report against policy rules."""
+
+        return evaluate_failure_triage_policy(
+            report,
+            max_critical=max_critical,
+            max_high=max_high,
+            max_actionable=max_actionable,
+            max_priority_score=max_priority_score,
+        )
+
+    @staticmethod
+    def save_failure_triage_json(
+        report: FailureTriageReport,
+        path,
+        *,
+        policy: FailureTriagePolicyResult | None = None,
+    ) -> Path:
+        """Export failure triage analysis as JSON."""
+
+        return export_failure_triage_json(
+            report,
+            path,
+            policy=policy,
+        )
+
+    @staticmethod
+    def compare_failure_triage(
+        baseline: FailureTriageReport,
+        candidate: FailureTriageReport,
+        *,
+        score_tolerance: float = 0.0,
+    ) -> FailureTriageComparison:
+        """Compare failure triage between model versions."""
+
+        return compare_failure_triage(
+            baseline,
+            candidate,
+            score_tolerance=score_tolerance,
+        )
+
+    @staticmethod
+    def triage_comparison_policy(
+        comparison: FailureTriageComparison,
+        *,
+        allow_regression: bool = False,
+        max_actionable_increase: int | None = None,
+        max_critical_increase: int | None = None,
+        max_score_increase: float | None = None,
+    ) -> TriageComparisonPolicyResult:
+        """Evaluate triage comparison against regression policy."""
+
+        return evaluate_triage_comparison_policy(
+            comparison,
+            allow_regression=allow_regression,
+            max_actionable_increase=max_actionable_increase,
+            max_critical_increase=max_critical_increase,
+            max_score_increase=max_score_increase,
+        )
+
+    @staticmethod
+    def save_triage_comparison_json(
+        comparison: FailureTriageComparison,
+        path,
+        *,
+        policy: TriageComparisonPolicyResult | None = None,
+    ) -> Path:
+        """Export triage comparison analysis as JSON."""
+
+        return export_triage_comparison_json(
+            comparison,
             path,
             policy=policy,
         )

@@ -1,3 +1,38 @@
+## [0.8.0] - 2026-08-20
+
+### Added
+
+- Failure priority scoring using failure rate, prediction instability, affected breadth, and severity weighting.
+- Low, medium, high, and critical failure priority classification.
+- Ranked failure triage reports.
+- Critical, high, medium, low, and actionable failure counts.
+- Primary failure-driver identification.
+- Structured remediation recommendations.
+- Failure triage policy gates for critical, high-priority, actionable, and maximum-score limits.
+- JSON export for triage reports, remediation guidance, and policy results.
+- Failure triage comparison across model versions.
+- Improved, stable, and regressed triage comparison classification.
+- Actionable-failure, critical-failure, and highest-priority-score delta tracking.
+- Configurable score tolerance for triage comparisons.
+- Triage comparison regression policy gates.
+- JSON export for triage comparisons and comparison policy results.
+- Public Python API support for failure triage and triage comparison workflows.
+- `triage` CLI command.
+- `triage-compare` CLI command.
+
+### Improved
+
+- FailureLab can now prioritize detected weaknesses instead of treating all failures equally.
+- Failure analysis now includes structured guidance for determining which weaknesses should be addressed first.
+- Model-version comparisons can detect whether overall remediation burden is improving or regressing.
+- CI workflows can enforce failure-priority and triage-regression limits.
+
+### Validation
+
+- Full automated test suite passing.
+- Failure priority, triage, remediation, policy, export, API, and CLI workflows verified.
+- Triage comparison, regression policy, JSON export, API, and CLI workflows verified.
+
 ## [0.7.0]
 
 ### Added

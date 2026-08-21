@@ -212,6 +212,45 @@ from failurelab.signature_history_export import (
     export_signature_history_json,
     signature_history_to_dict,
 )
+from failurelab.failure_priority import (
+    FailurePriority,
+    FailurePrioritySignal,
+    PriorityLevel,
+    calculate_priority_score,
+    classify_priority_level,
+    rank_failure_priorities,
+)
+from failurelab.failure_triage import (
+    FailureTriageReport,
+    build_failure_triage_report,
+)
+from failurelab.failure_remediation import (
+    FailureRemediation,
+    build_failure_remediations,
+    identify_primary_driver,
+    remediation_for_driver,
+)
+from failurelab.failure_triage_policy import (
+    FailureTriagePolicyResult,
+    evaluate_failure_triage_policy,
+)
+from failurelab.failure_triage_export import (
+    export_failure_triage_json,
+    failure_triage_to_dict,
+)
+from failurelab.triage_comparison import (
+    FailureTriageComparison,
+    TriageComparisonStatus,
+    compare_failure_triage,
+)
+from failurelab.triage_comparison_policy import (
+    TriageComparisonPolicyResult,
+    evaluate_triage_comparison_policy,
+)
+from failurelab.triage_comparison_export import (
+    export_triage_comparison_json,
+    triage_comparison_to_dict,
+)
 
 __all__ = [
     "FailureLab",
@@ -339,6 +378,29 @@ __all__ = [
 "evaluate_signature_history_policy",
 "export_signature_history_json",
 "signature_history_to_dict",
+"FailurePriority",
+"FailurePrioritySignal",
+"PriorityLevel",
+"calculate_priority_score",
+"classify_priority_level",
+"rank_failure_priorities",
+"FailureTriageReport",
+"build_failure_triage_report",
+"FailureRemediation",
+"build_failure_remediations",
+"identify_primary_driver",
+"remediation_for_driver",
+"FailureTriagePolicyResult",
+"evaluate_failure_triage_policy",
+"export_failure_triage_json",
+"failure_triage_to_dict",
+"FailureTriageComparison",
+"TriageComparisonStatus",
+"compare_failure_triage",
+"TriageComparisonPolicyResult",
+"evaluate_triage_comparison_policy",
+"export_triage_comparison_json",
+"triage_comparison_to_dict",
 ]
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"

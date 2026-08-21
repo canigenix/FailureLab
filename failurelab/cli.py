@@ -95,6 +95,29 @@ from failurelab.signature_history_policy import (
     evaluate_signature_history_policy,
 )
 
+from failurelab.failure_priority import (
+    FailurePrioritySignal,
+)
+from failurelab.failure_triage import (
+    build_failure_triage_report,
+)
+from failurelab.failure_triage_export import (
+    export_failure_triage_json,
+)
+from failurelab.failure_triage_policy import (
+    evaluate_failure_triage_policy,
+)
+
+from failurelab.triage_comparison import (
+    compare_failure_triage,
+)
+from failurelab.triage_comparison_export import (
+    export_triage_comparison_json,
+)
+from failurelab.triage_comparison_policy import (
+    evaluate_triage_comparison_policy,
+)
+
 try:
     from . import __version__
 except ImportError:  # pragma: no cover
@@ -543,6 +566,113 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional output path for signature-history JSON.",
+    )
+
+    triage_parser = subparsers.add_parser(
+        "triage",
+        help="Prioritize detected failure patterns for remediation.",
+    )
+
+    triage_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing failure-priority signals.",
+    )
+
+    triage_parser.add_argument(
+        "--max-critical",
+        type=int,
+        default=None,
+        help="Optional maximum number of critical failures.",
+    )
+
+    triage_parser.add_argument(
+        "--max-high",
+        type=int,
+        default=None,
+        help="Optional maximum number of high-priority failures.",
+    )
+
+    triage_parser.add_argument(
+        "--max-actionable",
+        type=int,
+        default=None,
+        help="Optional maximum number of actionable failures.",
+    )
+
+    triage_parser.add_argument(
+        "--max-priority-score",
+        type=float,
+        default=None,
+        help="Optional maximum allowed highest priority score.",
+    )
+
+    triage_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for triage JSON.",
+    )
+
+    triage_compare_parser = subparsers.add_parser(
+        "triage-compare",
+        help="Compare failure triage between baseline and candidate models.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--baseline",
+        type=Path,
+        required=True,
+        help="Baseline failure-priority signal JSON file.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--candidate",
+        type=Path,
+        required=True,
+        help="Candidate failure-priority signal JSON file.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--score-tolerance",
+        type=float,
+        default=0.0,
+        help="Priority-score increase treated as stable.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--allow-regression",
+        action="store_true",
+        help="Allow an overall triage regression.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--max-actionable-increase",
+        type=int,
+        default=None,
+        help="Optional maximum actionable-failure increase.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--max-critical-increase",
+        type=int,
+        default=None,
+        help="Optional maximum critical-failure increase.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--max-score-increase",
+        type=float,
+        default=None,
+        help="Optional maximum highest-priority-score increase.",
+    )
+
+    triage_compare_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for triage-comparison JSON.",
     )
 
     return parser
@@ -1884,6 +2014,216 @@ def run_signature_history(
     return 0
 
 
+def run_triage(
+    input_path: Path,
+    max_critical: int | None = None,
+    max_high: int | None = None,
+    max_actionable: int | None = None,
+    max_priority_score: float | None = None,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Triage input must be a JSON list."
+        )
+
+    signals = [
+        FailurePrioritySignal(
+            name=row["name"],
+            failure_rate=float(row["failure_rate"]),
+            prediction_flip_rate=float(row["prediction_flip_rate"]),
+            affected_fraction=float(row["affected_fraction"]),
+            severity_weight=float(row.get("severity_weight", 1.0)),
+        )
+        for row in data
+    ]
+
+    report = build_failure_triage_report(signals)
+
+    print(f"Failures: {report.total_failures}")
+    print(f"Actionable: {report.actionable_count}")
+    print(f"Critical: {report.critical_count}")
+    print(f"High: {report.high_count}")
+    print(f"Medium: {report.medium_count}")
+    print(f"Low: {report.low_count}")
+
+    if report.highest_priority is not None:
+        print(
+            f"Highest priority: {report.highest_priority.name} "
+            f"({report.highest_priority.score:.2%}, "
+            f"{report.highest_priority.level})"
+        )
+
+    policy = None
+    if (
+        max_critical is not None
+        or max_high is not None
+        or max_actionable is not None
+        or max_priority_score is not None
+    ):
+        policy = evaluate_failure_triage_policy(
+            report,
+            max_critical=(
+                max_critical
+                if max_critical is not None
+                else report.critical_count
+            ),
+            max_high=max_high,
+            max_actionable=max_actionable,
+            max_priority_score=max_priority_score,
+        )
+
+        for violation in policy.violations:
+            print(f"- {violation}")
+
+    if output_path is not None:
+        export_failure_triage_json(
+            report,
+            output_path,
+            policy=policy,
+        )
+        print(f"Report saved to {output_path}")
+
+    if policy is not None and not policy.passed:
+        print()
+        print("RESULT: FAILED")
+        return 1
+
+    print()
+    print("RESULT: PASSED")
+    return 0
+
+
+def _load_triage_report(
+    path: Path,
+):
+    data = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Triage comparison input must be a JSON list."
+        )
+
+    signals = [
+        FailurePrioritySignal(
+            name=row["name"],
+            failure_rate=float(
+                row["failure_rate"]
+            ),
+            prediction_flip_rate=float(
+                row["prediction_flip_rate"]
+            ),
+            affected_fraction=float(
+                row["affected_fraction"]
+            ),
+            severity_weight=float(
+                row.get(
+                    "severity_weight",
+                    1.0,
+                )
+            ),
+        )
+        for row in data
+    ]
+
+    return build_failure_triage_report(
+        signals
+    )
+
+
+def run_triage_compare(
+    baseline_path: Path,
+    candidate_path: Path,
+    score_tolerance: float = 0.0,
+    allow_regression: bool = False,
+    max_actionable_increase: int | None = None,
+    max_critical_increase: int | None = None,
+    max_score_increase: float | None = None,
+    output_path: Path | None = None,
+) -> int:
+    baseline = _load_triage_report(
+        baseline_path
+    )
+    candidate = _load_triage_report(
+        candidate_path
+    )
+
+    comparison = compare_failure_triage(
+        baseline,
+        candidate,
+        score_tolerance=score_tolerance,
+    )
+
+    print(
+        f"Status: {comparison.status}"
+    )
+    print(
+        f"Actionable: "
+        f"{comparison.baseline_actionable} -> "
+        f"{comparison.candidate_actionable} "
+        f"({comparison.actionable_delta:+d})"
+    )
+    print(
+        f"Critical: "
+        f"{comparison.baseline_critical} -> "
+        f"{comparison.candidate_critical} "
+        f"({comparison.critical_delta:+d})"
+    )
+    print(
+        f"Highest priority score: "
+        f"{comparison.baseline_highest_score:.2%} -> "
+        f"{comparison.candidate_highest_score:.2%} "
+        f"({comparison.highest_score_delta:+.2%})"
+    )
+
+    policy = evaluate_triage_comparison_policy(
+        comparison,
+        allow_regression=allow_regression,
+        max_actionable_increase=max_actionable_increase,
+        max_critical_increase=max_critical_increase,
+        max_score_increase=max_score_increase,
+    )
+
+    for violation in policy.violations:
+        print(
+            f"- {violation}"
+        )
+
+    if output_path is not None:
+        export_triage_comparison_json(
+            comparison,
+            output_path,
+            policy=policy,
+        )
+
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    if not policy.passed:
+        print()
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print()
+    print(
+        "RESULT: PASSED"
+    )
+    return 0
+
+
 def main():
     args = build_parser().parse_args()
 
@@ -1990,6 +2330,32 @@ def main():
                     args.max_dominant_stress_changes
                 ),
                 reject_volatile=args.reject_volatile,
+                output_path=args.output,
+            )
+
+        if args.command == "triage":
+            return run_triage(
+                input_path=args.input,
+                max_critical=args.max_critical,
+                max_high=args.max_high,
+                max_actionable=args.max_actionable,
+                max_priority_score=args.max_priority_score,
+                output_path=args.output,
+            )
+
+        if args.command == "triage-compare":
+            return run_triage_compare(
+                baseline_path=args.baseline,
+                candidate_path=args.candidate,
+                score_tolerance=args.score_tolerance,
+                allow_regression=args.allow_regression,
+                max_actionable_increase=(
+                    args.max_actionable_increase
+                ),
+                max_critical_increase=(
+                    args.max_critical_increase
+                ),
+                max_score_increase=args.max_score_increase,
                 output_path=args.output,
             )
 
