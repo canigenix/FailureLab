@@ -131,6 +131,16 @@ from failurelab.failure_resolution_export import (
     export_failure_resolution_json,
 )
 
+from failurelab.failure_forecast_report import (
+    build_failure_forecast_report,
+)
+from failurelab.failure_forecast_policy import (
+    evaluate_failure_forecast_policy,
+)
+from failurelab.failure_forecast_export import (
+    export_failure_forecast_json,
+)
+
 from failurelab.triage_comparison import (
     compare_failure_triage,
 )
@@ -797,6 +807,54 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional output path for resolution JSON.",
+    )
+
+
+    forecast_parser = subparsers.add_parser(
+        "forecast",
+        help="Forecast failure trajectories from checkpoint history.",
+    )
+
+    forecast_parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="JSON file containing failure occurrences.",
+    )
+
+    forecast_parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=0.0,
+        help="Maximum average score change treated as stable.",
+    )
+
+    forecast_parser.add_argument(
+        "--max-worsening",
+        type=int,
+        default=None,
+        help="Optional maximum number of worsening forecasts.",
+    )
+
+    forecast_parser.add_argument(
+        "--max-projected-risk",
+        type=int,
+        default=None,
+        help="Optional maximum number of projected-risk failures.",
+    )
+
+    forecast_parser.add_argument(
+        "--max-projected-score",
+        type=float,
+        default=None,
+        help="Optional maximum allowed projected failure score.",
+    )
+
+    forecast_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for forecast JSON.",
     )
 
     return parser
@@ -2563,6 +2621,97 @@ def run_resolution(
 
     return 0
 
+
+def run_forecast(
+    input_path: Path,
+    tolerance: float = 0.0,
+    max_worsening: int | None = None,
+    max_projected_risk: int | None = None,
+    max_projected_score: float | None = None,
+    output_path: Path | None = None,
+) -> int:
+    data = json.loads(
+        input_path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    if not isinstance(data, list):
+        raise ValueError(
+            "Forecast input must be a JSON list."
+        )
+
+    occurrences = [
+        FailureOccurrence(
+            checkpoint=row["checkpoint"],
+            failure_name=row["failure_name"],
+            priority_score=float(
+                row["priority_score"]
+            ),
+        )
+        for row in data
+    ]
+
+    report = build_failure_forecast_report(
+        occurrences,
+        tolerance=tolerance,
+    )
+
+    print(f"Failures: {report.total_failures}")
+    print(f"Improving: {report.improving_count}")
+    print(f"Stable: {report.stable_count}")
+    print(f"Worsening: {report.worsening_count}")
+    print(
+        "Insufficient history: "
+        f"{report.insufficient_history_count}"
+    )
+    print(
+        f"Projected risk: {report.projected_risk_count}"
+    )
+
+    if report.highest_projected_risk is not None:
+        highest = report.highest_projected_risk
+        print(
+            f"Highest projected risk: "
+            f"{highest.failure_name} "
+            f"({highest.projected_score:.2%})"
+        )
+
+    policy = None
+
+    if (
+        max_worsening is not None
+        or max_projected_risk is not None
+        or max_projected_score is not None
+    ):
+        policy = evaluate_failure_forecast_policy(
+            report,
+            max_worsening=max_worsening,
+            max_projected_risk=max_projected_risk,
+            max_projected_score=max_projected_score,
+        )
+
+        for violation in policy.violations:
+            print(f"- {violation}")
+
+    if output_path is not None:
+        export_failure_forecast_json(
+            report,
+            output_path,
+            policy=policy,
+        )
+        print(f"Report saved to {output_path}")
+
+    if policy is not None and not policy.passed:
+        print()
+        print("RESULT: FAILED")
+        return 1
+
+    print()
+    print("RESULT: PASSED")
+    return 0
+
+
 def main():
     args = build_parser().parse_args()
 
@@ -2716,6 +2865,17 @@ def main():
                 max_unchanged=args.max_unchanged,
                 max_unresolved=args.max_unresolved,
                 max_score_regression=args.max_score_regression,
+                output_path=args.output,
+            )
+
+
+        if args.command == "forecast":
+            return run_forecast(
+                input_path=args.input,
+                tolerance=args.tolerance,
+                max_worsening=args.max_worsening,
+                max_projected_risk=args.max_projected_risk,
+                max_projected_score=args.max_projected_score,
                 output_path=args.output,
             )
 

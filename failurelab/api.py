@@ -151,6 +151,18 @@ from failurelab.failure_resolution_export import (
     export_failure_resolution_json,
 )
 
+from failurelab.failure_forecast_report import (
+    FailureForecastReport,
+    build_failure_forecast_report,
+)
+from failurelab.failure_forecast_policy import (
+    FailureForecastPolicyResult,
+    evaluate_failure_forecast_policy,
+)
+from failurelab.failure_forecast_export import (
+    export_failure_forecast_json,
+)
+
 @dataclass
 class FailureLabReport:
     """Result of a complete FailureLab vision evaluation."""
@@ -1012,3 +1024,63 @@ class FailureLab:
             path,
             policy=policy,
         )
+
+    @staticmethod
+    def failure_forecast(
+        occurrences,
+        *,
+        tolerance: float = 0.0,
+    ) -> FailureForecastReport:
+        """Forecast failure trajectories across model checkpoints."""
+
+        failure_occurrences = [
+            occurrence
+            if isinstance(
+                occurrence,
+                FailureOccurrence,
+            )
+            else FailureOccurrence(
+                checkpoint=occurrence[0],
+                failure_name=occurrence[1],
+                priority_score=occurrence[2],
+            )
+            for occurrence in occurrences
+        ]
+
+        return build_failure_forecast_report(
+            failure_occurrences,
+            tolerance=tolerance,
+        )
+
+    @staticmethod
+    def failure_forecast_policy(
+        report: FailureForecastReport,
+        *,
+        max_worsening: int | None = None,
+        max_projected_risk: int | None = None,
+        max_projected_score: float | None = None,
+    ) -> FailureForecastPolicyResult:
+        """Evaluate failure forecasts against policy limits."""
+
+        return evaluate_failure_forecast_policy(
+            report,
+            max_worsening=max_worsening,
+            max_projected_risk=max_projected_risk,
+            max_projected_score=max_projected_score,
+        )
+
+    @staticmethod
+    def save_failure_forecast_json(
+        report: FailureForecastReport,
+        path,
+        *,
+        policy: FailureForecastPolicyResult | None = None,
+    ) -> Path:
+        """Export failure forecast analysis as JSON."""
+
+        return export_failure_forecast_json(
+            report,
+            path,
+            policy=policy,
+        )
+

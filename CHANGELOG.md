@@ -1,3 +1,30 @@
+## [0.10.0] - 2026-08-20
+
+### Added
+
+- Failure trajectory forecasting across model checkpoints.
+- Improving, stable, worsening, and insufficient-history forecast classification.
+- Average failure-score change tracking.
+- Projected next-checkpoint failure scores.
+- Projected-score clamping between 0.0 and 1.0.
+- Forecast reports with worsening counts and projected-risk tracking.
+- Highest projected-risk failure detection.
+- Forecast policy gates for worsening failures, projected-risk counts, and maximum projected scores.
+- JSON export for forecast reports and policy results.
+- Public Python API support for forecasting workflows.
+- `forecast` CLI command.
+
+### Improved
+
+- FailureLab can now estimate whether recurring weaknesses are likely to improve or worsen at the next checkpoint.
+- Persistence and resolution history can now feed forward into projected failure risk.
+- CI workflows can reject candidate models when projected failure risk exceeds configured limits.
+
+### Validation
+
+- Full automated test suite passing.
+- Forecast core logic, reporting, policy, JSON export, public API, and CLI workflows verified.
+
 ## [0.9.0] - 2026-08-20
 
 ### Added

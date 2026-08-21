@@ -292,6 +292,24 @@ from failurelab.failure_resolution_export import (
     export_failure_resolution_json,
     failure_resolution_to_dict,
 )
+from failurelab.failure_forecast import (
+    FailureForecast,
+    ForecastStatus,
+    classify_forecast_status,
+    forecast_failure_trajectory,
+)
+from failurelab.failure_forecast_report import (
+    FailureForecastReport,
+    build_failure_forecast_report,
+)
+from failurelab.failure_forecast_policy import (
+    FailureForecastPolicyResult,
+    evaluate_failure_forecast_policy,
+)
+from failurelab.failure_forecast_export import (
+    export_failure_forecast_json,
+    failure_forecast_to_dict,
+)
 
 __all__ = [
     "FailureLab",
@@ -457,4 +475,4 @@ __all__ = [
 "failure_persistence_to_dict",
 ]
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
