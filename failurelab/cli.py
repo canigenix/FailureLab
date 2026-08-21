@@ -141,6 +141,30 @@ from failurelab.failure_forecast_export import (
     export_failure_forecast_json,
 )
 
+from failurelab.evaluation_profile import (
+    load_evaluation_profile,
+)
+from failurelab.evaluation_profile_validation import (
+    validate_evaluation_profile,
+)
+from failurelab.evaluation_plan import (
+    build_evaluation_plan,
+)
+from failurelab.evaluation_report import (
+    EvaluationReport,
+    EvaluationStepResult,
+)
+from failurelab.evaluation_export import (
+    export_evaluation_json,
+)
+
+from failurelab.evaluator import (
+    run_evaluation,
+)
+from failurelab.evaluation_handlers import (
+    build_profile_handlers,
+)
+
 from failurelab.triage_comparison import (
     compare_failure_triage,
 )
@@ -855,6 +879,26 @@ def build_parser():
         type=Path,
         default=None,
         help="Optional output path for forecast JSON.",
+    )
+
+
+    evaluate_parser = subparsers.add_parser(
+        "evaluate",
+        help="Load and inspect a complete FailureLab evaluation profile.",
+    )
+
+    evaluate_parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to a FailureLab evaluation-profile JSON file.",
+    )
+
+    evaluate_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional output path for the evaluation-plan JSON report.",
     )
 
     return parser
@@ -2712,6 +2756,101 @@ def run_forecast(
     return 0
 
 
+
+
+def run_evaluate(
+    config_path: Path,
+    output_path: Path | None = None,
+) -> int:
+    """Load, validate, and execute an evaluation profile."""
+
+    profile = load_evaluation_profile(
+        config_path
+    )
+
+    validation = validate_evaluation_profile(
+        profile
+    )
+
+    if not validation.passed:
+        for error in validation.errors:
+            print(
+                f"- {error}",
+                file=sys.stderr,
+            )
+        return 1
+
+    plan = build_evaluation_plan(
+        profile
+    )
+
+    print(
+        f"Evaluation profile: {plan.profile_name}"
+    )
+    print(
+        f"Suite config: {plan.suite_config}"
+    )
+    print(
+        f"Analyses: {plan.analysis_count}"
+    )
+
+    for analysis in plan.analyses:
+        print(
+            f"- {analysis}"
+        )
+
+    handlers = build_profile_handlers(
+        profile,
+        base_path=config_path.parent,
+    )
+
+    report = run_evaluation(
+        profile,
+        handlers,
+    )
+
+    print()
+
+    for step in report.steps:
+        status = (
+            "PASSED"
+            if step.passed
+            else "FAILED"
+        )
+
+        if step.message:
+            print(
+                f"{step.analysis}: "
+                f"{status} - {step.message}"
+            )
+        else:
+            print(
+                f"{step.analysis}: {status}"
+            )
+
+    if output_path is not None:
+        export_evaluation_json(
+            report,
+            output_path,
+        )
+        print(
+            f"Report saved to {output_path}"
+        )
+
+    print()
+
+    if not report.passed:
+        print(
+            "RESULT: FAILED"
+        )
+        return 1
+
+    print(
+        "RESULT: PASSED"
+    )
+
+    return 0
+
 def main():
     args = build_parser().parse_args()
 
@@ -2868,6 +3007,12 @@ def main():
                 output_path=args.output,
             )
 
+
+        if args.command == "evaluate":
+            return run_evaluate(
+                config_path=args.config,
+                output_path=args.output,
+            )
 
         if args.command == "forecast":
             return run_forecast(

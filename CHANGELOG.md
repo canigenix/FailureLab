@@ -1,3 +1,29 @@
+## [0.11.0] - 2026-08-21
+
+### Added
+
+- Unified `evaluate` command for profile-driven FailureLab evaluations
+- Evaluation profiles for configuring multi-analysis workflows
+- Evaluation planning and validation
+- Combined evaluation reports with JSON export
+- Real evaluation handlers for:
+  - progression
+  - failure signatures
+  - triage
+  - persistence
+  - resolution
+  - forecasting
+- Dedicated profile inputs for progression, signatures, triage, and forecasting
+- End-to-end execution of all six evaluation analyses from a single profile
+- Ordered evaluation results with pass/fail status and analysis summaries
+- End-to-end CLI coverage for complete multi-analysis evaluations
+
+### Changed
+
+- Evaluation workflows can now be orchestrated through a single configuration-driven command
+- Persistence and resolution can reuse failure-occurrence history used by forecasting
+- `evaluate` now executes real analysis handlers instead of only displaying an evaluation plan
+
 ## [0.10.0] - 2026-08-20
 
 ### Added

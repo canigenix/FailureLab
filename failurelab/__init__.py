@@ -310,6 +310,31 @@ from failurelab.failure_forecast_export import (
     export_failure_forecast_json,
     failure_forecast_to_dict,
 )
+from failurelab.evaluation_profile import (
+    EvaluationProfile,
+    load_evaluation_profile,
+)
+from failurelab.evaluation_profile_validation import (
+    EvaluationProfileValidation,
+    validate_evaluation_profile,
+)
+from failurelab.evaluation_plan import (
+    EvaluationPlan,
+    build_evaluation_plan,
+)
+from failurelab.evaluation_report import (
+    EvaluationReport,
+    EvaluationStepResult,
+    build_evaluation_report,
+)
+from failurelab.evaluator import (
+    EvaluationHandler,
+    run_evaluation,
+)
+from failurelab.evaluation_export import (
+    evaluation_report_to_dict,
+    export_evaluation_json,
+)
 
 __all__ = [
     "FailureLab",
@@ -473,6 +498,19 @@ __all__ = [
 "evaluate_failure_persistence_policy",
 "export_failure_persistence_json",
 "failure_persistence_to_dict",
+"EvaluationProfile",
+"load_evaluation_profile",
+"EvaluationProfileValidation",
+"validate_evaluation_profile",
+"EvaluationPlan",
+"build_evaluation_plan",
+"EvaluationReport",
+"EvaluationStepResult",
+"build_evaluation_report",
+"EvaluationHandler",
+"run_evaluation",
+"evaluation_report_to_dict",
+"export_evaluation_json",
 ]
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"

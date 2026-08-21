@@ -163,6 +163,30 @@ from failurelab.failure_forecast_export import (
     export_failure_forecast_json,
 )
 
+from failurelab.evaluation_profile import (
+    EvaluationProfile,
+    load_evaluation_profile,
+)
+from failurelab.evaluation_profile_validation import (
+    EvaluationProfileValidation,
+    validate_evaluation_profile,
+)
+from failurelab.evaluation_plan import (
+    EvaluationPlan,
+    build_evaluation_plan,
+)
+from failurelab.evaluation_report import (
+    EvaluationReport,
+    EvaluationStepResult,
+)
+from failurelab.evaluator import (
+    EvaluationHandler,
+    run_evaluation,
+)
+from failurelab.evaluation_export import (
+    export_evaluation_json,
+)
+
 @dataclass
 class FailureLabReport:
     """Result of a complete FailureLab vision evaluation."""
@@ -1082,5 +1106,53 @@ class FailureLab:
             report,
             path,
             policy=policy,
+        )
+
+    @staticmethod
+    def load_evaluation_profile(
+        path,
+    ) -> EvaluationProfile:
+        """Load an evaluation profile from JSON."""
+
+        return load_evaluation_profile(path)
+
+    @staticmethod
+    def validate_evaluation_profile(
+        profile: EvaluationProfile,
+    ) -> EvaluationProfileValidation:
+        """Validate an evaluation profile."""
+
+        return validate_evaluation_profile(profile)
+
+    @staticmethod
+    def evaluation_plan(
+        profile: EvaluationProfile,
+    ) -> EvaluationPlan:
+        """Build an ordered evaluation plan."""
+
+        return build_evaluation_plan(profile)
+
+    @staticmethod
+    def evaluate_profile(
+        profile: EvaluationProfile,
+        handlers: dict[str, EvaluationHandler],
+    ) -> EvaluationReport:
+        """Execute an evaluation profile using registered handlers."""
+
+        return run_evaluation(
+            profile,
+            handlers,
+        )
+
+    @staticmethod
+    def save_evaluation_json(
+        report: EvaluationReport,
+        path,
+    ) -> Path:
+        """Export a complete evaluation report as JSON."""
+
+        return export_evaluation_json(
+            report,
+            path,
         )
 
