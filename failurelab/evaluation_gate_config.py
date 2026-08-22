@@ -3,6 +3,14 @@ from pathlib import Path
 import json
 
 
+VALID_HEALTH_STATUSES = {
+    "healthy",
+    "watch",
+    "at-risk",
+    "critical",
+}
+
+
 @dataclass(frozen=True)
 class EvaluationGateConfig:
     """Configuration for a unified evaluation release gate."""
@@ -16,7 +24,7 @@ class EvaluationGateConfig:
 def load_evaluation_gate_config(
     path: str | Path,
 ) -> EvaluationGateConfig:
-    """Load evaluation gate configuration from JSON."""
+    """Load and validate evaluation gate configuration from JSON."""
 
     config_path = Path(path)
 
@@ -31,43 +39,56 @@ def load_evaluation_gate_config(
             "Evaluation gate config must be a JSON object."
         )
 
-    maximum_failed_analyses = int(
-        data.get(
-            "maximum_failed_analyses",
-            0,
-        )
+    raw_maximum = data.get(
+        "maximum_failed_analyses",
+        0,
     )
 
-    if maximum_failed_analyses < 0:
+    if (
+        isinstance(raw_maximum, bool)
+        or not isinstance(raw_maximum, int)
+    ):
+        raise ValueError(
+            "maximum_failed_analyses must be an integer."
+        )
+
+    if raw_maximum < 0:
         raise ValueError(
             "maximum_failed_analyses cannot be negative."
         )
 
-    allowed_health_statuses = tuple(
-        data.get(
-            "allowed_health_statuses",
-            [
-                "healthy",
-            ],
-        )
+    raw_statuses = data.get(
+        "allowed_health_statuses",
+        [
+            "healthy",
+        ],
     )
 
-    if not allowed_health_statuses:
+    if not isinstance(
+        raw_statuses,
+        list,
+    ):
+        raise ValueError(
+            "allowed_health_statuses must be a JSON list."
+        )
+
+    if not raw_statuses:
         raise ValueError(
             "allowed_health_statuses cannot be empty."
         )
 
-    valid_statuses = {
-        "healthy",
-        "watch",
-        "at-risk",
-        "critical",
-    }
+    if not all(
+        isinstance(status, str)
+        for status in raw_statuses
+    ):
+        raise ValueError(
+            "allowed_health_statuses must contain only strings."
+        )
 
     invalid = [
         status
-        for status in allowed_health_statuses
-        if status not in valid_statuses
+        for status in raw_statuses
+        if status not in VALID_HEALTH_STATUSES
     ]
 
     if invalid:
@@ -78,7 +99,14 @@ def load_evaluation_gate_config(
             )
         )
 
+    if len(set(raw_statuses)) != len(raw_statuses):
+        raise ValueError(
+            "allowed_health_statuses cannot contain duplicates."
+        )
+
     return EvaluationGateConfig(
-        maximum_failed_analyses=maximum_failed_analyses,
-        allowed_health_statuses=allowed_health_statuses,
+        maximum_failed_analyses=raw_maximum,
+        allowed_health_statuses=tuple(
+            raw_statuses
+        ),
     )

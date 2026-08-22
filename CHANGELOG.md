@@ -1,3 +1,32 @@
+## [0.15.0] - 2026-08-21
+
+### Added
+
+- Strict validation for evaluation gate configuration
+- Validation for invalid, negative, boolean, and non-integer failure limits
+- Validation for empty, malformed, duplicate, and unsupported health-status policies
+- Public API stability regression tests
+- CLI error-contract regression tests
+- v1.0 compatibility and behavioral contract tests
+
+### Improved
+
+- Standardized and expanded the package-level public Python API
+- Exposed evaluation inputs, summaries, health classification, intelligence, and release-gate APIs at package level
+- Exposed failure resolution and forecasting APIs consistently
+- Removed inconsistencies and formatting drift from `__all__`
+- Hardened configuration behavior for production and CI usage
+- Locked CLI exit-code semantics for successful runs, evaluation failures, gate failures, and configuration errors
+- Improved backward-compatibility coverage ahead of v1.0
+
+### Stability
+
+- Existing evaluation workflows remain backward compatible
+- Existing no-gate CLI workflows remain unchanged
+- Public API exports are checked for missing and duplicate symbols
+- Core evaluation and release-gate behavior is protected by v1.0 contract tests
+- Full automated test suite passes after stabilization changes
+
 ## [0.14.0] - 2026-08-21
 
 ### Added

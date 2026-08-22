@@ -10,34 +10,27 @@ Instead of asking only *"How accurate is my model?"*, FailureLab asks:
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.14.0-green)](https://github.com/canigenix/FailureLab/releases)
+[![Version](https://img.shields.io/badge/version-0.15.0-green)](https://github.com/canigenix/FailureLab/releases)
 [![Tests](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml/badge.svg)](https://github.com/canigenix/FailureLab/actions/workflows/tests.yml)
 
 ---
 
-## FailureLab v0.14.0
+## FailureLab v0.15.0
 
-Version 0.14.0 adds **configurable evaluation release gates** to FailureLab.
+Version 0.15.0 is a **stabilization release focused on v1.0 readiness**.
 
-Unified evaluations can now be checked against explicit model-health requirements and used as automated CI or release gates.
+This release does not add another major analysis workflow. Instead, it hardens the parts of FailureLab that need to remain predictable once the public API is treated as stable.
 
-Gate policies can control:
+v0.15.0 focuses on:
 
-- Maximum number of failed analyses
-- Allowed evaluation health states
-- Gate PASS/FAIL status
-- Human-readable policy violations
-- CLI exit behavior for CI pipelines
+- Stricter evaluation-gate configuration validation
+- Public API consistency
+- Package-level import stability
+- CLI error-contract stability
+- Backward-compatibility regression coverage
+- v1.0 behavioral contract tests
 
-A gate configuration can be supplied directly to `failurelab evaluate`:
-
-```bash
-failurelab evaluate \
-  --config failurelab.json \
-  --gate-config gate.json
-```
-
-This extends the evaluation intelligence introduced in v0.13.0 into an automated decision layer suitable for CI and release workflows.
+The goal of this release is to reduce ambiguity before the v1.0 API and CLI behavior are frozen.
 
 ---
 
@@ -79,7 +72,9 @@ FailureLab currently provides:
 - Evaluation intelligence
 - Overall model-health classification
 - Configurable evaluation release gates
-- CI-compatible gate exit codes
+- CI-compatible exit codes
+- Public API stability coverage
+- Backward-compatibility regression coverage
 - Python and CLI integration
 
 ---
@@ -119,7 +114,7 @@ failurelab --version
 Expected:
 
 ```text
-failurelab 0.14.0
+failurelab 0.15.0
 ```
 
 ---
@@ -328,9 +323,9 @@ print(report.health_status)
 
 ## Evaluation Release Gates
 
-FailureLab v0.14.0 can apply a configurable release gate to completed evaluation intelligence.
+FailureLab can apply a configurable release gate to completed evaluation intelligence.
 
-Create a gate configuration:
+Example gate configuration:
 
 ```json
 {
@@ -356,7 +351,7 @@ Gate: PASSED
 RESULT: PASSED
 ```
 
-A failing gate reports:
+A failing gate may report:
 
 ```text
 Gate: FAILED
@@ -368,11 +363,44 @@ RESULT: FAILED
 
 Gate failure returns a non-zero CLI exit code, allowing the evaluation to block CI or release workflows.
 
-### Controlled degradation
+---
+
+## Gate Configuration Validation
+
+v0.15.0 hardens gate configuration validation ahead of v1.0.
+
+`maximum_failed_analyses`:
+
+- Must be an integer
+- Cannot be negative
+- Cannot be a boolean value
+
+`allowed_health_statuses`:
+
+- Must be a JSON list
+- Cannot be empty
+- Must contain strings only
+- Cannot contain duplicate values
+- Must contain only supported health states
+
+Supported values:
+
+```text
+healthy
+watch
+at-risk
+critical
+```
+
+Invalid gate configuration is treated as a configuration error rather than being silently coerced.
+
+---
+
+## Controlled Degradation
 
 Gate policies do not have to require perfect health.
 
-For example:
+Example:
 
 ```json
 {
@@ -384,29 +412,7 @@ For example:
 }
 ```
 
-This allows a limited degradation state while still rejecting more serious `at-risk` or `critical` evaluations.
-
-### Gate configuration
-
-Supported fields:
-
-```text
-maximum_failed_analyses
-allowed_health_statuses
-```
-
-`maximum_failed_analyses` must be zero or greater.
-
-Valid health states are:
-
-```text
-healthy
-watch
-at-risk
-critical
-```
-
-An invalid gate configuration is rejected before a gate decision is made.
+This allows limited degradation while still rejecting more serious evaluation states.
 
 ---
 
@@ -654,161 +660,105 @@ Policies can cover:
 - Resolution limits
 - Forecast limits
 
-The v0.14 evaluation gate operates above these individual analyses, allowing the combined model-health result to drive an additional release decision.
+The evaluation release gate operates above these individual analyses and can make a final decision based on combined model health.
 
 ---
 
-## Experiment Tracking
+## Public Python API
 
-`ExperimentRunner` combines suite execution, result persistence, and history tracking.
+v0.15.0 standardizes the package-level public API ahead of v1.0.
 
-```python
-from failurelab import ExperimentRunner
+The package-level API includes major interfaces for:
 
-runner = ExperimentRunner(
-    predict_proba
-)
+- Core FailureLab execution
+- Stress-suite configuration
+- Model comparison
+- Experiment history
+- Robustness policies
+- Cross-stress analysis
+- Sample failure analysis
+- Failure correlation
+- Failure clustering
+- Progression analysis
+- Failure signatures
+- Triage
+- Persistence
+- Resolution
+- Forecasting
+- Evaluation profiles
+- Evaluation input resolution
+- Evaluation summaries
+- Evaluation health classification
+- Evaluation intelligence
+- Evaluation release gates
 
-output = runner.run(
-    dataset=dataset,
-    config=config,
-    result_path="result.json",
-    history_path="history.json",
-    model_id="resnet18-v3",
-)
-```
-
----
-
-## Robustness History
-
-FailureLab can retain repeated experiment results and detect whether robustness changes over time.
-
-```python
-from failurelab import SuiteHistory
-
-history = SuiteHistory.load_json(
-    "history.json"
-)
-
-print(
-    history.trend(
-        "production-vision"
-    )
-)
-```
-
-Possible trends include:
-
-```text
-improved
-stable
-regressed
-insufficient_history
-```
-
----
-
-## Batch Experiments
-
-Multiple models or experiment configurations can be executed as one batch.
+Example:
 
 ```python
 from failurelab import (
-    BatchExperiment,
-    BatchExperimentRunner,
-)
-
-experiments = [
-    BatchExperiment(
-        model_id="model-a",
-        predict_proba_fn=model_a_predict,
-        dataset=dataset,
-        config=config,
-        result_path="model-a.json",
-        history_path="history.json",
-    ),
-]
-
-runner = BatchExperimentRunner()
-
-output = runner.run(
-    experiments
+    EvaluationProfile,
+    EvaluationReport,
+    EvaluationSummary,
+    EvaluationHealth,
+    EvaluationIntelligence,
+    EvaluationGateConfig,
+    EvaluationGateResult,
 )
 ```
+
+The package tests verify that:
+
+- Public names exist
+- `__all__` contains no duplicate symbols
+- Core evaluation interfaces remain exported
+- Resolution and forecasting APIs remain exported
+- Evaluation intelligence and gate APIs remain exported
 
 ---
 
-## Failure Envelopes
+## CLI Error Contract
 
-FailureLab can sweep increasingly severe perturbations to identify where failure begins.
+v0.15.0 locks the CLI error behavior expected for v1.0.
 
-```python
-blur_sweep = lab.sweep("blur")
+Exit codes:
+
+```text
+0 = successful execution
+1 = robustness, evaluation, policy, or gate failure
+2 = invalid input, malformed configuration, or operational error
 ```
 
-Or:
+Configuration and operational errors are written to `stderr`.
 
-```python
-envelope = lab.sweep_all()
-```
+Evaluation and gate outcomes continue to be reported through normal CLI output.
+
+Examples of exit-code `2` conditions include:
+
+- Missing configuration file
+- Malformed JSON
+- Invalid evaluation profile structure
+- Invalid gate configuration
+
+This contract is protected by regression tests.
 
 ---
 
-## Custom Stress Tests
+## v1.0 Contract Coverage
 
-Project-specific transformations can use the same robustness pipeline as built-in stresses.
+v0.15.0 adds explicit tests for behavior expected to remain stable in v1.0.
 
-```python
-from failurelab import CustomStressTest
+The contract covers:
 
-custom_test = CustomStressTest(
-    name="custom_shift",
-    transform=lambda image: image,
-)
-```
+- Core package-level public API
+- Evaluation report behavior
+- Evaluation intelligence
+- Health classification
+- Evaluation release gates
+- Successful CLI evaluation
+- Gate-failure CLI behavior
+- CLI exit-code semantics
 
----
-
-## Visualization
-
-Generate robustness degradation charts:
-
-```python
-from failurelab.visualization import plot_robustness_drops
-
-plot_robustness_drops(
-    weaknesses,
-    output_path="robustness.png",
-)
-```
-
-CLI:
-
-```bash
-failurelab visualize \
-  --input weaknesses.json \
-  --output robustness.png
-```
-
----
-
-## Compare Model Versions
-
-FailureLab can compare baseline and candidate model robustness.
-
-```python
-from failurelab import compare_reports
-
-comparison = compare_reports(
-    baseline_report,
-    candidate_report,
-)
-
-print(comparison.summary())
-
-comparison.require_pass()
-```
+This gives the upcoming v1.0 release a concrete compatibility baseline.
 
 ---
 
@@ -862,7 +812,7 @@ CLI exit codes:
 
 ```text
 0 = passed
-1 = robustness, evaluation, or gate failure detected
+1 = robustness, evaluation, policy, or gate failure detected
 2 = invalid input or configuration error
 ```
 
@@ -953,43 +903,6 @@ Gate results provide:
 
 ---
 
-## Public Python API
-
-FailureLab exposes its major workflows through Python modules and package interfaces.
-
-Major capabilities include:
-
-- Core robustness evaluation
-- Configured stress suites
-- Experiment history
-- Model comparison
-- Robustness policies
-- Cross-stress analysis
-- Sample-level failure analysis
-- Failure correlation
-- Failure clustering
-- Model progression
-- Checkpoint risk scoring
-- Failure signatures and diagnostics
-- Signature comparison and history
-- Failure priority scoring
-- Failure triage
-- Remediation recommendations
-- Failure persistence
-- Failure resolution
-- Failure forecasting
-- Evaluation profiles
-- Evaluation input resolution
-- Evaluation summaries
-- Evaluation health classification
-- Evaluation intelligence
-- Evaluation release gates
-- Gate configuration
-- Gate execution
-- JSON export
-
----
-
 ## Testing
 
 Run the complete test suite:
@@ -998,7 +911,28 @@ Run the complete test suite:
 python -m pytest -q
 ```
 
-The automated suite covers FailureLab's core evaluation, stress tests, policies, reports, experiment tracking, model comparison, progression, failure signatures, triage, persistence, resolution, forecasting, evaluation orchestration, evaluation intelligence, release gates, CLI workflows, backward compatibility, and public Python interfaces.
+The automated suite covers:
+
+- Core robustness evaluation
+- Stress tests
+- Policies
+- Reports
+- Experiment tracking
+- Model comparison
+- Progression
+- Failure signatures
+- Triage
+- Persistence
+- Resolution
+- Forecasting
+- Evaluation orchestration
+- Evaluation intelligence
+- Release gates
+- Configuration validation
+- Public API stability
+- CLI error contracts
+- Backward compatibility
+- v1.0 behavioral contracts
 
 The complete suite should pass before a release is built.
 
@@ -1019,11 +953,11 @@ Artifacts are generated under:
 dist/
 ```
 
-For v0.14.0:
+For v0.15.0:
 
 ```text
-failurelab-0.14.0-py3-none-any.whl
-failurelab-0.14.0.tar.gz
+failurelab-0.15.0-py3-none-any.whl
+failurelab-0.15.0.tar.gz
 ```
 
 ---
@@ -1065,10 +999,10 @@ FailureLab is under active development.
 Current version:
 
 ```text
-0.14.0
+0.15.0
 ```
 
-v0.14.0 adds configurable evaluation release gates, allowing model-health intelligence to drive automated CI and release decisions through explicit failure limits and allowed health states.
+v0.15.0 is the final stabilization release before v1.0. It hardens configuration validation, standardizes the public Python API, locks CLI error semantics, and adds explicit v1.0 compatibility and regression coverage.
 
 ---
 
