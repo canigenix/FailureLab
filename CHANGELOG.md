@@ -1,3 +1,58 @@
+## [1.0.0] - 2026-08-21
+
+### Stable Release
+
+FailureLab 1.0 establishes the first stable public release of the framework.
+
+The v1.0 release freezes the public Python API and command-line interface established during the pre-1.0 development cycle and provides a compatibility baseline for future releases.
+
+### Stability Guarantees
+
+- Frozen package-level public Python API with 211 exported symbols
+- Frozen command-line interface with 19 supported commands
+- Stable CLI exit-code contract
+- Stable package metadata and `failurelab` console entry point
+- Explicit v1.0 behavioral regression coverage
+- Public API compatibility tests
+- CLI compatibility tests
+- Packaging metadata tests
+
+### Core Capabilities
+
+- Computer-vision robustness stress testing
+- Configurable stress suites and severity analysis
+- Failure envelopes and robustness scoring
+- Class-level and sample-level failure analysis
+- Cross-stress vulnerability analysis
+- Failure correlation and clustering
+- Model comparison and regression detection
+- Experiment history and checkpoint progression analysis
+- Failure signatures and signature history
+- Failure triage and remediation prioritization
+- Failure recurrence and persistence analysis
+- Failure resolution tracking
+- Failure trajectory forecasting
+- Unified profile-driven evaluation
+- Evaluation intelligence and model-health classification
+- Configurable CI and release gates
+- Structured JSON reporting
+- Python and command-line interfaces
+
+### Compatibility
+
+FailureLab 1.0 requires Python 3.10 or newer.
+
+The v1.0 compatibility contract is protected by automated tests covering the public API, CLI surface, evaluation behavior, release gates, package metadata, and error semantics.
+
+### Validation
+
+- 685 automated tests passing
+- Package compilation verified
+- Public API frozen at 211 exports
+- CLI frozen at 19 commands
+- Package metadata contract verified
+- v1.0 behavioral contract verified
+
 ## [0.15.0] - 2026-08-21
 
 ### Added

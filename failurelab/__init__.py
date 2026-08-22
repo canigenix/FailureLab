@@ -584,4 +584,4 @@ __all__ = [
     "evaluate_report_gate",
 ]
 
-__version__ = "0.15.0"
+__version__ = "1.0.0"
